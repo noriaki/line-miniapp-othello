@@ -624,14 +624,75 @@ type Direction =
 - **Outbound**: WASMBridge、AIEngineInterface
 - **External**: WebAssembly Runtime、ai.wasm
 
-**External Dependencies Investigation**:
-- **Egaroucid WASM**: C++で実装されたリバーシAIエンジン、Emscriptenでコンパイル
-- **API確認**: ai.jsサンプルコードから、EmscriptenモジュールパターンでModule.ccallまたはModule.cwrapを使用
-- **メモリ管理**: Module._malloc/Module._freeでメモリアロケーション、HEAP8/HEAP32経由でデータ転送
-- **呼び出し形式**: ボード状態をバイト配列(64バイト: 0=空, 1=黒, 2=白)として渡し、次の手の座標(row, col)を受け取る想定
-- **パフォーマンス**: 要件8で3秒以内の応答が必要、WASMは同期実行だがUIブロック回避のため非同期ラッパー必須
-- **エラーケース**: WASM初期化失敗、計算タイムアウト、無効な応答のハンドリングが必要
-- **Requires investigation during implementation**: 正確な関数シグネチャ、エラーコード定義、メモリレイアウト仕様
+**Egaroucid WASM Integration Details** (分析完了):
+
+**ファイル構成**:
+- **WASM Binary**: `ai.wasm` (~1-3 MB、Emscripten compiled C++ reversi engine)
+- **JavaScript Loader**: `ai.js` (~69 KB、Emscripten runtime + glue code)
+- **Location**: `.kiro/specs/line-reversi-miniapp/resources/`
+
+**WASM Module Exports** (主要関数):
+```typescript
+interface EgaroucidWASMModule {
+  // AI計算(主要関数)
+  _calc_value(boardPtr: number): number;  // 最善手を計算、結果はencoded position
+  _init_ai(): void;                        // AI初期化(アプリ起動時1回)
+  _resume(): void;                         // 中断した計算を再開
+  _stop(): void;                           // 計算中断
+
+  // メモリ管理(Emscripten標準)
+  _malloc(size: number): number;           // WASMメモリ割り当て
+  _free(ptr: number): void;                // メモリ解放
+
+  // エクスポートされたメモリとヒープビュー
+  memory: WebAssembly.Memory;
+  HEAP8: Int8Array;
+  HEAPU8: Uint8Array;
+}
+```
+
+**ボード状態エンコーディング** (確定仕様):
+- **メモリレイアウト**: 64 bytes (8x8 grid in row-major order)
+- **セル値**: 0 = empty, 1 = black (user), 2 = white (AI)
+- **Physical Layout**: Byte 0-7 = Row 0, Byte 8-15 = Row 1, ..., Byte 56-63 = Row 7
+- **Example encoding**:
+  ```typescript
+  const boardPtr = Module._malloc(64);
+  const boardHeap = new Uint8Array(Module.memory.buffer, boardPtr, 64);
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const cell = board[row][col];
+      boardHeap[row * 8 + col] = cell === 'black' ? 1 : cell === 'white' ? 2 : 0;
+    }
+  }
+  ```
+
+**AI応答デコーディング**:
+- **Return Value**: `_calc_value()`は単一のinteger (0-63の範囲)
+- **Position extraction**: `row = Math.floor(result / 8)`, `col = result % 8`
+- **Validation required**: 結果が0-63の範囲外の場合はエラーとして扱う
+
+**実行モデル** (重要):
+- **WASM関数は同期的(blocking)**: `_calc_value()`は完了まで制御を返さない
+- **典型的な計算時間**: 0.5-2秒(ボード複雑度による)
+- **UIブロック回避策**: Web Workerで実行必須(メインスレッドで実行すると画面フリーズ)
+- **Timeout strategy**: Promise with 3秒タイムアウト、超過時はrandom valid moveにフォールバック
+
+**初期化パターン**:
+```typescript
+// WASMモジュール初期化(非同期)
+await new Promise((resolve) => {
+  window.Module.onRuntimeInitialized = () => {
+    window.Module._init_ai();  // AI特有の初期化
+    resolve();
+  };
+});
+```
+
+**エラーハンドリング**:
+- **Load phase**: fetch失敗、WebAssembly.instantiate失敗 → UI error表示
+- **Execution phase**: _malloc失敗、invalid response (< 0 or >= 64) → random valid move
+- **Timeout**: 3秒以内に応答なし → calculation中断、random valid move返却
 
 **Contract Definition**
 
@@ -690,59 +751,73 @@ interface AICalculationError {
 ```typescript
 interface WASMBridgeService {
   // WASMモジュールロードと初期化
-  loadWASM(wasmPath: string): Promise<Result<EmscriptenModule, WASMLoadError>>;
+  loadWASM(wasmPath: string): Promise<Result<EgaroucidWASMModule, WASMLoadError>>;
 
-  // ボード状態をWASMメモリに書き込み
-  encodeBoard(module: EmscriptenModule, board: Board): Result<WASMPointer, EncodeError>;
+  // ボード状態をWASMメモリに書き込み(64 bytes allocation)
+  encodeBoard(module: EgaroucidWASMModule, board: Board, player: Player): Result<WASMPointer, EncodeError>;
 
-  // WASM関数呼び出し
+  // WASM関数呼び出し(_calc_value wrapper)
   callAIFunction(
-    module: EmscriptenModule,
-    boardPointer: WASMPointer,
-    player: Player
-  ): Result<WASMResponse, WASMCallError>;
+    module: EgaroucidWASMModule,
+    boardPointer: WASMPointer
+  ): Result<number, WASMCallError>; // Returns raw encoded position (0-63)
 
-  // WASM応答をデコード
-  decodeResponse(response: WASMResponse): Result<Position, DecodeError>;
+  // WASM応答をデコード(encoded position -> {row, col})
+  decodeResponse(encodedPosition: number): Result<Position, DecodeError>;
 
   // メモリ解放
-  freeMemory(module: EmscriptenModule, pointer: WASMPointer): void;
+  freeMemory(module: EgaroucidWASMModule, pointer: WASMPointer): void;
+
+  // WASM初期化確認
+  isModuleReady(module: EgaroucidWASMModule | null): boolean;
 }
 
-// Emscripten型定義
-interface EmscriptenModule {
-  _malloc(size: number): number;
-  _free(ptr: number): void;
+// Egaroucid WASM型定義(確定版)
+interface EgaroucidWASMModule {
+  // AI計算関数
+  _calc_value(boardPtr: number): number;    // Returns encoded position (0-63)
+  _init_ai(): void;                          // Initialize AI engine once
+  _resume(): void;                           // Resume interrupted calculation
+  _stop(): void;                             // Stop current calculation
+
+  // Memory management (Emscripten standard)
+  _malloc(size: number): number;             // Allocate WASM memory
+  _free(ptr: number): void;                  // Free WASM memory
+
+  // Memory exports
+  memory: WebAssembly.Memory;
   HEAP8: Int8Array;
-  HEAP32: Int32Array;
-  ccall(
-    funcName: string,
-    returnType: string,
-    argTypes: string[],
-    args: unknown[]
-  ): unknown;
+  HEAPU8: Uint8Array;
+
+  // Emscripten initialization callback
+  onRuntimeInitialized?: () => void;
+
+  // Optional: locate WASM file path
+  locateFile?: (filename: string, dir: string) => string;
 }
 
-type WASMPointer = number;
+type WASMPointer = number; // Pointer to allocated WASM memory
 
-interface WASMResponse {
-  row: number;
-  col: number;
-}
+// Board encoding: 64 bytes (8x8 grid)
+// Values: 0=empty, 1=black, 2=white
+type BoardEncoding = Uint8Array; // length must be 64
 
 interface WASMLoadError {
   readonly type: 'wasm_load_error';
-  readonly reason: string;
+  readonly reason: 'fetch_failed' | 'instantiation_failed' | 'initialization_timeout';
+  readonly message: string;
 }
 
 interface EncodeError {
   readonly type: 'encode_error';
-  readonly reason: 'invalid_board' | 'memory_allocation_failed';
+  readonly reason: 'invalid_board' | 'memory_allocation_failed' | 'invalid_player';
+  readonly message: string;
 }
 
 interface WASMCallError {
   readonly type: 'wasm_call_error';
-  readonly reason: string;
+  readonly reason: 'module_not_ready' | 'execution_failed' | 'null_pointer';
+  readonly message: string;
 }
 
 interface DecodeError {
@@ -754,6 +829,178 @@ interface DecodeError {
 - **Preconditions**: EmscriptenModuleが正常にロード済み
 - **Postconditions**: WASMメモリは適切に解放される、エラー時も例外を投げずResultを返す
 - **Invariants**: メモリリークを防止するため、必ずfreeMemory()を呼び出す
+
+#### Web Worker Integration (UI Thread Isolation)
+
+**Rationale**:
+Egaroucid WASMの`_calc_value()`は同期的(blocking)で、計算に0.5-2秒かかるため、メインスレッドで実行するとUI全体がフリーズします。Web Workerで実行することで、UIの応答性を維持しながらAI計算を行います。
+
+**Architecture**:
+```
+Main Thread (React)          Worker Thread
+┌─────────────────┐         ┌──────────────────┐
+│  AIEngine       │────────▶│  ai-worker.ts    │
+│  (Service)      │ message │  (WASM executor) │
+└─────────────────┘◀────────└──────────────────┘
+        │                             │
+        │                             ▼
+        │                    ┌──────────────────┐
+        │                    │  WASMBridge      │
+        │                    │  + Egaroucid     │
+        │                    └──────────────────┘
+        ▼
+  Update UI state
+```
+
+**Worker Contract**:
+```typescript
+// src/workers/ai-worker.ts - Web Worker implementation
+
+// Message types
+interface AIWorkerRequest {
+  type: 'calculate';
+  payload: {
+    board: Board;           // 8x8 grid
+    currentPlayer: Player;  // 'black' | 'white'
+    timeoutMs?: number;     // Default 3000
+  };
+}
+
+interface AIWorkerResponse {
+  type: 'success' | 'error';
+  payload: {
+    move?: Position;        // { row, col } if success
+    error?: string;         // Error message if error
+    calculationTimeMs?: number; // Performance metric
+  };
+}
+
+// Worker message handler
+self.onmessage = async (event: MessageEvent<AIWorkerRequest>) => {
+  const { type, payload } = event.data;
+
+  if (type === 'calculate') {
+    try {
+      // Initialize WASM if needed (one-time)
+      if (!wasmModule) {
+        wasmModule = await WASMBridge.loadWASM('/ai.wasm');
+        wasmModule._init_ai();
+      }
+
+      const startTime = performance.now();
+
+      // Encode board to WASM memory
+      const boardPtr = WASMBridge.encodeBoard(
+        wasmModule,
+        payload.board,
+        payload.currentPlayer
+      );
+
+      // Call WASM (synchronous, but in worker thread)
+      const encodedPosition = wasmModule._calc_value(boardPtr);
+
+      // Free memory immediately
+      wasmModule._free(boardPtr);
+
+      // Decode response
+      const move = WASMBridge.decodeResponse(encodedPosition);
+
+      const calculationTimeMs = performance.now() - startTime;
+
+      // Send result back to main thread
+      self.postMessage({
+        type: 'success',
+        payload: { move, calculationTimeMs }
+      } as AIWorkerResponse);
+
+    } catch (error) {
+      self.postMessage({
+        type: 'error',
+        payload: { error: String(error) }
+      } as AIWorkerResponse);
+    }
+  }
+};
+```
+
+**Main Thread Integration (React Hook)**:
+```typescript
+// src/hooks/useAIPlayer.ts
+
+export function useAIPlayer() {
+  const workerRef = useRef<Worker | null>(null);
+
+  useEffect(() => {
+    // Initialize worker on mount
+    workerRef.current = new Worker(
+      new URL('../workers/ai-worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+
+    // Cleanup on unmount
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, []);
+
+  const calculateMove = useCallback(
+    async (board: Board, player: Player): Promise<Position> => {
+      return new Promise((resolve, reject) => {
+        if (!workerRef.current) {
+          reject(new Error('Worker not initialized'));
+          return;
+        }
+
+        // Set up timeout (3 seconds per requirement 8)
+        const timeout = setTimeout(() => {
+          reject(new Error('AI calculation timeout (>3s)'));
+        }, 3000);
+
+        // Set up message listener
+        const handleMessage = (event: MessageEvent<AIWorkerResponse>) => {
+          clearTimeout(timeout);
+          workerRef.current?.removeEventListener('message', handleMessage);
+
+          if (event.data.type === 'success') {
+            resolve(event.data.payload.move!);
+          } else {
+            reject(new Error(event.data.payload.error));
+          }
+        };
+
+        workerRef.current.addEventListener('message', handleMessage);
+
+        // Send calculation request to worker
+        workerRef.current.postMessage({
+          type: 'calculate',
+          payload: { board, currentPlayer: player, timeoutMs: 3000 }
+        } as AIWorkerRequest);
+      });
+    },
+    []
+  );
+
+  return { calculateMove };
+}
+```
+
+**Error Handling in Worker Context**:
+- **WASM Load Failure**: Worker初期化時にWASMロード失敗 → main threadにerror送信、UIでエラー表示
+- **Calculation Timeout**: Main threadで3秒タイムアウト → workerを中断しないが、新しいrequestを送信
+- **Invalid Response**: Worker内で検証し、invalid responseはerrorとして返す
+- **Memory Allocation Failure**: `_malloc()`が0を返した場合、即座にerrorを返す
+
+**Performance Characteristics**:
+| Metric | Target | Notes |
+|--------|--------|-------|
+| Worker Message Overhead | <10ms | postMessage serialization cost |
+| WASM Calculation (typical) | 0.5-2s | Depends on board complexity |
+| WASM Calculation (max) | <3s | Requirement 8.1, timeout enforced |
+| UI Response Time | <100ms | UI remains responsive during calc |
+
+- **Preconditions**: Web Worker APIが利用可能(全モダンブラウザでサポート)
+- **Postconditions**: メインスレッドがブロックされない、計算中もUIインタラクション可能
+- **Invariants**: 1つのworkerインスタンスを再利用、計算中の複数リクエストは順次処理
 
 ### LINE Integration Layer
 
@@ -1279,9 +1526,11 @@ const cspHeader = `
 | First Contentful Paint (FCP) | < 2秒 | Lighthouse、WebPageTest |
 | Time to Interactive (TTI) | < 3秒 | Lighthouse |
 | UI Response Time | < 100ms | Chrome DevTools Performance |
-| AI Calculation Time | < 3秒 | カスタム計測 |
+| AI Calculation Time (typical) | 0.5-2秒 | Worker thread, performance.now() |
+| AI Calculation Time (max) | < 3秒 | Timeout enforced, fallback to random |
 | Bundle Size (JS) | < 500KB (gzip) | Next.js Build Analyzer |
-| WASM Size | 既存ファイル使用 | - |
+| WASM Binary Size | ~1-3 MB | ai.wasm (uncompressed, lazy loaded) |
+| WASM Memory Overhead | ~1-2 MB | WebAssembly.Memory allocation |
 
 ### Optimization Techniques
 
@@ -1301,8 +1550,11 @@ const cspHeader = `
 - `React.memo`: BoardRendererコンポーネントを最適化
 
 **WASM Performance**:
-- WASM moduleは初期化後に再利用(毎回ロードしない)
-- AI計算はWeb Worker内で実行(UIスレッドブロック回避)
+- **Lazy Loading**: WASMは初回AI計算時にロード(FCP/TTIに影響しない)
+- **Module Reuse**: 初期化後のWASMモジュールをWorker内で再利用
+- **Web Worker Isolation**: `_calc_value()`はWeb Worker内で実行(UIスレッド非ブロック)
+- **Memory Management**: 計算ごとに64 bytes割り当て、即座に解放(メモリリーク防止)
+- **Timeout Protection**: 3秒タイムアウトでランダムmoveにフォールバック(UX保証)
 
 **Asset Optimization**:
 - 画像なし(CSS/SVGで描画)
