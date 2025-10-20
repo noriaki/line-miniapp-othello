@@ -164,6 +164,45 @@ graph TB
 **代替案検討**:
 - JavaScript: 型エラーによるバグリスク、保守性の低下
 
+#### Package Manager
+
+**選定**: pnpm
+
+**理由**:
+- 高速なインストール速度とディスク効率
+- ストリクトな依存関係管理(phantom dependenciesの防止)
+- Next.js/React開発におけるデファクトスタンダードの1つ
+- モノレポ対応(将来的な拡張に備えて)
+
+**代替案検討**:
+- npm: ディスク使用量が多い、インストール速度が遅い
+- yarn: pnpmと比較して依存解決が緩い
+
+#### Development Tools
+
+**選定**: ESLint + Prettier + TypeScript Compiler
+
+**理由**:
+- **ESLint**: コード品質チェック、Next.js推奨設定(`eslint-config-next`)を使用
+- **Prettier**: コードフォーマット自動化、チーム内の一貫性確保
+- **TypeScript Compiler**: 型チェック必須実行、ビルド前検証
+- 標準的なNext.jsアプリケーションのベストプラクティスに準拠
+
+**具体的なツール構成**:
+- `eslint-config-next`: Next.js公式のESLint設定
+- `eslint-plugin-react-hooks`: React Hooksのルール検証
+- `prettier`: コードフォーマッター
+- `typescript`: 型チェックとコンパイル
+
+**開発ワークフロー統合**:
+- Pre-commit hook: `lint-staged`で変更ファイルのみlint/format実行
+- CI/CDチェック: lint, format, typecheckをビルド前に実行
+- IDEサポート: VSCode等での自動フォーマット・リアルタイムエラー表示
+
+**代替案検討**:
+- TSLintのみ: フォーマットルールが不十分、Prettier併用が標準
+- 手動チェックのみ: 属人的なコード品質、チーム開発で問題
+
 ### Key Design Decisions
 
 #### Decision 1: Server/Client Component境界の設計

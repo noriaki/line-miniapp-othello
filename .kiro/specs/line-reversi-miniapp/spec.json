@@ -1,7 +1,7 @@
 {
   "feature_name": "line-reversi-miniapp",
   "created_at": "2025-10-21T00:00:00Z",
-  "updated_at": "2025-10-21T11:00:00Z",
+  "updated_at": "2025-10-21T12:00:00Z",
   "language": "ja",
   "phase": "design-validated",
   "approvals": {
@@ -12,8 +12,10 @@
     "design": {
       "generated": true,
       "approved": true,
-      "validated_at": "2025-10-21T11:00:00Z",
-      "validation_notes": "WASM integration details completed and reviewed - ai.js and ai-ex.js analysis performed, actual function signatures documented with discrepancy notes (_calc_value has 4 params, _init_ai has 1 param, _ai_js discovered), implementation verification items added"
+      "validated_at": "2025-10-21T12:00:00Z",
+      "validation_notes": "Design review completed with GO decision (conditional) - 3 critical issues identified: (1) WASM function signature uncertainty (to be verified in implementation tasks), (2) LINE mini-app environment constraints (marked as not required), (3) Memory management details (marked as not required). Added Package Manager (pnpm) and Development Tools (ESLint + Prettier + TypeScript) specifications following Next.js best practices.",
+      "review_decision": "GO (conditional)",
+      "critical_issues_resolution": "Issue 1 (WASM signatures) will be addressed in implementation tasks. Issues 2 and 3 marked as not required by user."
     },
     "tasks": {
       "generated": false,
