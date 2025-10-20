@@ -1,16 +1,16 @@
 {
   "feature_name": "line-reversi-miniapp",
   "created_at": "2025-10-21T00:00:00Z",
-  "updated_at": "2025-10-21T00:00:00Z",
+  "updated_at": "2025-10-21T09:30:00Z",
   "language": "ja",
-  "phase": "requirements-generated",
+  "phase": "design-generated",
   "approvals": {
     "requirements": {
       "generated": true,
       "approved": true
     },
     "design": {
-      "generated": false,
+      "generated": true,
       "approved": false
     },
     "tasks": {
