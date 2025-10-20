@@ -59,6 +59,7 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 
 ### GitHub Operations
 - Use `gh` command for GitHub repository operations and Pull Request management unless otherwise specified
+- Language: English
 - When creating a Pull Request:
   - Include the PR link URL in the output
   - Wait for user to merge the PR
