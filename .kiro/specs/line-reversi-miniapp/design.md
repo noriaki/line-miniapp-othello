@@ -632,11 +632,31 @@ type Direction =
 - **Location**: `.kiro/specs/line-reversi-miniapp/resources/`
 
 **WASM Module Exports** (主要関数):
+
+**⚠️ 重要な注記**: ai-ex.js（非minified版）の解析により、実際のWASMエクスポートシグネチャは以下の通りより多くのパラメータを持つことが判明:
+- `_init_ai(a0)` - 1パラメータ (用途未確認)
+- `_calc_value(a0, a1, a2, a3)` - 4パラメータ (a1, a2, a3の用途未確認)
+- `_ai_js(a0, a1, a2)` - 3パラメータ (新規発見、用途未確認)
+
+下記のインタフェース定義は**使用上の簡略化版**であり、追加パラメータはオプショナルまたはデフォルト値を持つと推定されます。実装フェーズで実際の動作を検証し、必要に応じて調整します。
+
 ```typescript
 interface EgaroucidWASMModule {
   // AI計算(主要関数)
-  _calc_value(boardPtr: number): number;  // 最善手を計算、結果はencoded position
-  _init_ai(): void;                        // AI初期化(アプリ起動時1回)
+  // 実際のシグネチャ: _calc_value(a0, a1?, a2?, a3?)
+  // 簡略化版: 最初のパラメータ(boardPtr)のみ使用を想定
+  _calc_value(boardPtr: number, ...args: unknown[]): number;  // 最善手を計算、結果はencoded position
+
+  // AI初期化(アプリ起動時1回)
+  // 実際のシグネチャ: _init_ai(a0?)
+  // 簡略化版: パラメータなしで呼び出し可能と想定
+  _init_ai(config?: unknown): void;
+
+  // 代替AI計算関数(ai-ex.jsで発見、用途要調査)
+  // オリジナルのWeb実装で使用される可能性あり
+  _ai_js?(board: unknown, level?: number, other?: unknown): unknown;
+
+  // 計算制御
   _resume(): void;                         // 中断した計算を再開
   _stop(): void;                           // 計算中断
 
@@ -650,6 +670,12 @@ interface EgaroucidWASMModule {
   HEAPU8: Uint8Array;
 }
 ```
+
+**実装時の検証項目**:
+1. `_calc_value(boardPtr)`が単一パラメータで正常に動作するか確認
+2. 動作しない場合、追加パラメータ(a1, a2, a3)の用途を特定（難易度レベル、探索深度、タイムアウト等の可能性）
+3. `_ai_js`関数の用途を調査（オリジナルWeb版のソースコード参照が必要）
+4. `_init_ai()`がパラメータなしで呼び出し可能か確認
 
 **ボード状態エンコーディング** (確定仕様):
 - **メモリレイアウト**: 64 bytes (8x8 grid in row-major order)
@@ -757,9 +783,11 @@ interface WASMBridgeService {
   encodeBoard(module: EgaroucidWASMModule, board: Board, player: Player): Result<WASMPointer, EncodeError>;
 
   // WASM関数呼び出し(_calc_value wrapper)
+  // 注: 追加パラメータ(difficulty, depth等)は実装時に検証が必要
   callAIFunction(
     module: EgaroucidWASMModule,
-    boardPointer: WASMPointer
+    boardPointer: WASMPointer,
+    options?: { difficulty?: number; depth?: number; timeout?: number }
   ): Result<number, WASMCallError>; // Returns raw encoded position (0-63)
 
   // WASM応答をデコード(encoded position -> {row, col})
@@ -772,29 +800,7 @@ interface WASMBridgeService {
   isModuleReady(module: EgaroucidWASMModule | null): boolean;
 }
 
-// Egaroucid WASM型定義(確定版)
-interface EgaroucidWASMModule {
-  // AI計算関数
-  _calc_value(boardPtr: number): number;    // Returns encoded position (0-63)
-  _init_ai(): void;                          // Initialize AI engine once
-  _resume(): void;                           // Resume interrupted calculation
-  _stop(): void;                             // Stop current calculation
-
-  // Memory management (Emscripten standard)
-  _malloc(size: number): number;             // Allocate WASM memory
-  _free(ptr: number): void;                  // Free WASM memory
-
-  // Memory exports
-  memory: WebAssembly.Memory;
-  HEAP8: Int8Array;
-  HEAPU8: Uint8Array;
-
-  // Emscripten initialization callback
-  onRuntimeInitialized?: () => void;
-
-  // Optional: locate WASM file path
-  locateFile?: (filename: string, dir: string) => string;
-}
+// Note: EgaroucidWASMModuleの完全な型定義は上記の「WASM Module Exports」セクションを参照
 
 type WASMPointer = number; // Pointer to allocated WASM memory
 
@@ -884,6 +890,7 @@ self.onmessage = async (event: MessageEvent<AIWorkerRequest>) => {
       // Initialize WASM if needed (one-time)
       if (!wasmModule) {
         wasmModule = await WASMBridge.loadWASM('/ai.wasm');
+        // Note: 実際のシグネチャは_init_ai(a0?)だが、パラメータなしで呼び出し可能と想定
         wasmModule._init_ai();
       }
 
@@ -897,6 +904,8 @@ self.onmessage = async (event: MessageEvent<AIWorkerRequest>) => {
       );
 
       // Call WASM (synchronous, but in worker thread)
+      // Note: 実際のシグネチャは_calc_value(a0, a1?, a2?, a3?)
+      // 追加パラメータが必要な場合は実装時に調整
       const encodedPosition = wasmModule._calc_value(boardPtr);
 
       // Free memory immediately

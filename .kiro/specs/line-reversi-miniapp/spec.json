@@ -1,7 +1,7 @@
 {
   "feature_name": "line-reversi-miniapp",
   "created_at": "2025-10-21T00:00:00Z",
-  "updated_at": "2025-10-21T10:30:00Z",
+  "updated_at": "2025-10-21T11:00:00Z",
   "language": "ja",
   "phase": "design-validated",
   "approvals": {
@@ -12,8 +12,8 @@
     "design": {
       "generated": true,
       "approved": true,
-      "validated_at": "2025-10-21T10:30:00Z",
-      "validation_notes": "WASM integration details completed - ai.js analysis performed, function signatures documented, Web Worker integration designed"
+      "validated_at": "2025-10-21T11:00:00Z",
+      "validation_notes": "WASM integration details completed and reviewed - ai.js and ai-ex.js analysis performed, actual function signatures documented with discrepancy notes (_calc_value has 4 params, _init_ai has 1 param, _ai_js discovered), implementation verification items added"
     },
     "tasks": {
       "generated": false,
