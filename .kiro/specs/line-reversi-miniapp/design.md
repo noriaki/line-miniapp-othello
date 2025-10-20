@@ -166,17 +166,18 @@ graph TB
 
 #### Node.js Runtime Environment
 
-**選定**: Node.js LTS (Latest Long-Term Support) + nodenv
+**選定**: Node.js 24.x (Active/Current) + nodenv
 
 **理由**:
-- **Node.js LTS**: 安定性と長期サポート保証、Next.js 14+の推奨環境
+- **Node.js 24.x**: 最新機能の活用、間もなくActiveステータスに移行予定
 - **nodenv**: プロジェクトごとのNode.jsバージョン管理、チーム開発での環境統一
 - `.node-version`ファイルでバージョンを明示、自動切り替え対応
+- Next.js 14+との完全な互換性、最新のパフォーマンス改善を享受
 - 本番環境との一貫性確保
 
 **バージョン管理方針**:
 - プロジェクトルートに`.node-version`ファイルを配置
-- 記載バージョン: 最新のLTS版(2025年10月時点では Node.js 22.x LTS 想定)
+- 記載バージョン: Node.js 24.x (2025年10月時点で間もなくActive)
 - マイナー/パッチバージョンの自動更新を許可(セキュリティパッチ適用のため)
 - メジャーバージョンアップは明示的なレビューと承認が必要
 
