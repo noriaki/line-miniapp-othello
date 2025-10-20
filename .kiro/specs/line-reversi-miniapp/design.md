@@ -164,6 +164,27 @@ graph TB
 **代替案検討**:
 - JavaScript: 型エラーによるバグリスク、保守性の低下
 
+#### Node.js Runtime Environment
+
+**選定**: Node.js LTS (Latest Long-Term Support) + nodenv
+
+**理由**:
+- **Node.js LTS**: 安定性と長期サポート保証、Next.js 14+の推奨環境
+- **nodenv**: プロジェクトごとのNode.jsバージョン管理、チーム開発での環境統一
+- `.node-version`ファイルでバージョンを明示、自動切り替え対応
+- 本番環境との一貫性確保
+
+**バージョン管理方針**:
+- プロジェクトルートに`.node-version`ファイルを配置
+- 記載バージョン: 最新のLTS版(2025年10月時点では Node.js 22.x LTS 想定)
+- マイナー/パッチバージョンの自動更新を許可(セキュリティパッチ適用のため)
+- メジャーバージョンアップは明示的なレビューと承認が必要
+
+**代替案検討**:
+- nvm: シェル起動時のオーバーヘッド、nodenvより設定が複雑
+- asdf: 汎用的だが、Node.js専用ツールとしては過剰
+- Dockerのみ: 開発環境のオーバーヘッド、ローカル開発の複雑化
+
 #### Package Manager
 
 **選定**: pnpm
