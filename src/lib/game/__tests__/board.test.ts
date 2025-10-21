@@ -1,9 +1,5 @@
+import type { Board } from '../types';
 import {
-  Board,
-  Cell,
-  Player,
-  Position,
-  StoneCount,
   createInitialBoard,
   countStones,
   cloneBoard,

@@ -4,7 +4,6 @@ import {
   findFlipsInDirection,
 } from '../move-validator';
 import { createInitialBoard, setCellAt } from '../board';
-import { Board, Player, Position } from '../types';
 
 describe('Move Validator', () => {
   describe('findFlipsInDirection', () => {
@@ -25,12 +24,10 @@ describe('Move Validator', () => {
 
     it('should return empty array when no flips are possible', () => {
       const board = createInitialBoard();
-      const flips = findFlipsInDirection(
-        board,
-        { row: 0, col: 0 },
-        'black',
-        { dx: 1, dy: 0 }
-      );
+      const flips = findFlipsInDirection(board, { row: 0, col: 0 }, 'black', {
+        dx: 1,
+        dy: 0,
+      });
       expect(flips).toEqual([]);
     });
 
@@ -38,12 +35,10 @@ describe('Move Validator', () => {
       let board = createInitialBoard();
       board = setCellAt(board, { row: 2, col: 2 }, 'black');
       // (2,2)-black, (3,3)-white, (4,4)-white
-      const flips = findFlipsInDirection(
-        board,
-        { row: 5, col: 5 },
-        'black',
-        { dx: -1, dy: -1 }
-      );
+      const flips = findFlipsInDirection(board, { row: 5, col: 5 }, 'black', {
+        dx: -1,
+        dy: -1,
+      });
       expect(flips).toEqual([
         { row: 4, col: 4 },
         { row: 3, col: 3 },
@@ -52,19 +47,17 @@ describe('Move Validator', () => {
 
     it('should stop at edge of board', () => {
       const board = createInitialBoard();
-      const flips = findFlipsInDirection(
-        board,
-        { row: 0, col: 0 },
-        'black',
-        { dx: 1, dy: 1 }
-      );
+      const flips = findFlipsInDirection(board, { row: 0, col: 0 }, 'black', {
+        dx: 1,
+        dy: 1,
+      });
       expect(flips).toEqual([]);
     });
   });
 
   describe('findAllFlips', () => {
     it('should find flips in multiple directions', () => {
-      let board = createInitialBoard();
+      const board = createInitialBoard();
       // Set up scenario where placing at (3,2) flips (3,3)
       const flips = findAllFlips(board, { row: 3, col: 2 }, 'black');
       expect(flips).toContainEqual({ row: 3, col: 3 });

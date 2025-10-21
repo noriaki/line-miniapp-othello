@@ -54,23 +54,19 @@ async function calculateMove(
     }
 
     // Encode board to WASM memory
-    const encodeBoardResult = encodeBoard(
-      wasmModule,
-      request.payload.board,
-      request.payload.currentPlayer
-    );
+    const encodeBoardResult = encodeBoard(wasmModule, request.payload.board);
 
     if (!encodeBoardResult.success) {
-      throw new Error(`Board encoding failed: ${encodeBoardResult.error.message}`);
+      throw new Error(
+        `Board encoding failed: ${encodeBoardResult.error.message}`
+      );
     }
 
     const boardPtr = encodeBoardResult.value;
 
     try {
       // Call WASM function (synchronous, but in worker thread)
-      const callResult = callAIFunction(wasmModule, boardPtr, {
-        timeout: request.payload.timeoutMs,
-      });
+      const callResult = callAIFunction(wasmModule, boardPtr);
 
       if (!callResult.success) {
         throw new Error(`WASM call failed: ${callResult.error.message}`);
@@ -82,7 +78,9 @@ async function calculateMove(
       const decodeResult = decodeResponse(encodedPosition);
 
       if (!decodeResult.success) {
-        throw new Error(`Response decode failed: ${decodeResult.error.message}`);
+        throw new Error(
+          `Response decode failed: ${decodeResult.error.message}`
+        );
       }
 
       const move = decodeResult.value;
@@ -113,7 +111,7 @@ async function calculateMove(
  * Message handler
  */
 self.onmessage = async (event: MessageEvent<AIWorkerRequest>) => {
-  const { type, payload } = event.data;
+  const { type } = event.data;
 
   if (type === 'calculate') {
     const response = await calculateMove(event.data);

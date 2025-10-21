@@ -3,11 +3,7 @@
  * Handles loading and initialization of the Egaroucid WebAssembly module
  */
 
-import type {
-  EgaroucidWASMModule,
-  WASMLoadError,
-  Result,
-} from './types';
+import type { EgaroucidWASMModule, WASMLoadError, Result } from './types';
 
 /**
  * Load WASM module from the specified path
@@ -31,7 +27,8 @@ export async function loadWASM(
         error: {
           type: 'wasm_load_error',
           reason: 'fetch_failed',
-          message: fetchError instanceof Error ? fetchError.message : 'Network error',
+          message:
+            fetchError instanceof Error ? fetchError.message : 'Network error',
         },
       };
     }
@@ -55,7 +52,10 @@ export async function loadWASM(
         error: {
           type: 'wasm_load_error',
           reason: 'fetch_failed',
-          message: bufferError instanceof Error ? bufferError.message : 'Failed to read response',
+          message:
+            bufferError instanceof Error
+              ? bufferError.message
+              : 'Failed to read response',
         },
       };
     }
@@ -70,13 +70,17 @@ export async function loadWASM(
         error: {
           type: 'wasm_load_error',
           reason: 'instantiation_failed',
-          message: instantiateError instanceof Error ? instantiateError.message : 'Instantiation failed',
+          message:
+            instantiateError instanceof Error
+              ? instantiateError.message
+              : 'Instantiation failed',
         },
       };
     }
 
     // Extract exports
-    const exports = wasmModule.instance.exports as unknown as EgaroucidWASMModule;
+    const exports = wasmModule.instance
+      .exports as unknown as EgaroucidWASMModule;
 
     // Initialize AI
     if (typeof exports._init_ai === 'function') {
