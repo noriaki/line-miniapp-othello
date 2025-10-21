@@ -147,29 +147,53 @@ export default function GameBoard(): JSX.Element {
     <div data-testid="game-board" className="game-board">
       {/* Game Status Display */}
       <div className="game-status">
+        {/* Turn Indicator */}
         <div className="turn-indicator">
           {gameStatus.type === 'playing' && (
-            <p className="text-lg font-bold">
-              {currentPlayer === 'black' ? '黒のターン' : '白のターン (AI)'}
-              {isAIThinking && ' (思考中...)'}
-            </p>
+            <div className="flex items-center justify-center gap-2">
+              <span
+                className={`inline-block w-6 h-6 rounded-full ${
+                  currentPlayer === 'black'
+                    ? 'bg-gray-900 ring-2 ring-line-green'
+                    : 'bg-gray-300'
+                }`}
+              />
+              <p className="text-xl font-bold">
+                {currentPlayer === 'black' ? 'あなたのターン' : 'AI のターン'}
+                {isAIThinking && ' (思考中...)'}
+              </p>
+              <span
+                className={`inline-block w-6 h-6 rounded-full ${
+                  currentPlayer === 'white'
+                    ? 'bg-white ring-2 ring-line-green'
+                    : 'bg-gray-300'
+                }`}
+              />
+            </div>
           )}
           {gameStatus.type === 'finished' && (
-            <p className="text-xl font-bold">
+            <p className="text-xl font-bold game-finished-text">
               ゲーム終了！
               {gameStatus.winner === 'draw'
                 ? '引き分け'
                 : gameStatus.winner === 'black'
-                  ? '黒の勝利!'
-                  : '白の勝利!'}
+                  ? 'あなたの勝ち!'
+                  : 'AI の勝ち!'}
             </p>
           )}
         </div>
 
         {/* Stone Count */}
-        <div className="stone-count flex gap-4 mt-2">
-          <span>黒: {blackCount}</span>
-          <span>白: {whiteCount}</span>
+        <div className="stone-count">
+          <div className="stone-count-item">
+            <div className="stone-display stone-display-black" />
+            <span className="text-2xl font-bold">{blackCount}</span>
+          </div>
+          <div className="stone-count-divider">vs</div>
+          <div className="stone-count-item">
+            <div className="stone-display stone-display-white" />
+            <span className="text-2xl font-bold">{whiteCount}</span>
+          </div>
         </div>
       </div>
 
@@ -201,11 +225,8 @@ export default function GameBoard(): JSX.Element {
 
       {/* Game Over Screen */}
       {gameStatus.type === 'finished' && (
-        <div className="game-result mt-4">
-          <button
-            onClick={resetGame}
-            className="reset-button px-6 py-2 bg-line-green text-white rounded"
-          >
+        <div className="game-result">
+          <button onClick={resetGame} className="reset-button">
             新しいゲームを開始
           </button>
         </div>
