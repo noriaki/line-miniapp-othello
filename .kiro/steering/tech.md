@@ -35,9 +35,7 @@
 
 ```typescript
 // Result型によるエラーハンドリング
-type Result<T, E> =
-  | { success: true; value: T }
-  | { success: false; error: E };
+type Result<T, E> = { success: true; value: T } | { success: false; error: E };
 ```
 
 ### Code Quality

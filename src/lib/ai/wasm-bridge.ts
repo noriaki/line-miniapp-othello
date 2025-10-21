@@ -3,7 +3,7 @@
  * Handles data conversion between JavaScript and WebAssembly
  */
 
-import type { Board, Player, Position } from '../game/types';
+import type { Board, Position } from '../game/types';
 import type {
   EgaroucidWASMModule,
   WASMPointer,
@@ -17,7 +17,6 @@ import type {
  * Encode board state to WASM memory
  * @param module - WASM module instance
  * @param board - 8x8 board state
- * @param player - Current player
  * @returns Result with memory pointer or error
  *
  * Board encoding: 64 bytes (8x8 grid in row-major order)
@@ -25,8 +24,7 @@ import type {
  */
 export function encodeBoard(
   module: EgaroucidWASMModule,
-  board: Board,
-  player: Player
+  board: Board
 ): Result<WASMPointer, EncodeError> {
   // Validate board dimensions
   if (!board || board.length !== 8) {
@@ -154,13 +152,11 @@ export function freeMemory(
  * Call WASM AI function
  * @param module - WASM module instance
  * @param boardPointer - Pointer to board data in WASM memory
- * @param options - Optional calculation options
  * @returns Result with encoded position or error
  */
 export function callAIFunction(
   module: EgaroucidWASMModule,
-  boardPointer: WASMPointer,
-  options?: { difficulty?: number; depth?: number; timeout?: number }
+  boardPointer: WASMPointer
 ): Result<number, WASMCallError> {
   if (boardPointer === 0) {
     return {
@@ -190,7 +186,8 @@ export function callAIFunction(
       error: {
         type: 'wasm_call_error',
         reason: 'execution_failed',
-        message: error instanceof Error ? error.message : 'WASM execution failed',
+        message:
+          error instanceof Error ? error.message : 'WASM execution failed',
       },
     };
   }

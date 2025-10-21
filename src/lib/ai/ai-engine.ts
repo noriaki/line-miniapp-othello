@@ -53,7 +53,8 @@ export class AIEngine {
         error: {
           type: 'initialization_error',
           reason: 'wasm_load_failed',
-          message: error instanceof Error ? error.message : 'Worker creation failed',
+          message:
+            error instanceof Error ? error.message : 'Worker creation failed',
         },
       };
     }
