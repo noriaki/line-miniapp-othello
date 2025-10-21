@@ -110,6 +110,54 @@ describe('encodeBoard', () => {
     }
   });
 
+  it('should return error for invalid row size', () => {
+    const wasmModule = createMockModule();
+    // Create board with one row having wrong size
+    const invalidBoard: Board = [
+      Array(8).fill(null),
+      Array(8).fill(null),
+      Array(7).fill(null), // Invalid row size
+      Array(8).fill(null),
+      Array(8).fill(null),
+      Array(8).fill(null),
+      Array(8).fill(null),
+      Array(8).fill(null),
+    ];
+
+    const result = encodeBoard(wasmModule, invalidBoard);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.type).toBe('encode_error');
+      expect(result.error.reason).toBe('invalid_board');
+      expect(result.error.message).toContain('8x8');
+    }
+  });
+
+  it('should return error and free memory for invalid cell value', () => {
+    const wasmModule = createMockModule();
+    // Create board with invalid cell value
+    const invalidBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(null));
+
+    // Set invalid value (using type assertion to bypass TypeScript check)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (invalidBoard as any)[2][3] = 'invalid';
+
+    const result = encodeBoard(wasmModule, invalidBoard);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.type).toBe('encode_error');
+      expect(result.error.reason).toBe('invalid_board');
+      expect(result.error.message).toContain('[2, 3]');
+    }
+
+    // Verify that memory was freed
+    expect(wasmModule._free).toHaveBeenCalled();
+  });
+
   it('should return error when malloc fails', () => {
     const wasmModule = createMockModule();
     wasmModule._malloc = jest.fn().mockReturnValue(0); // Simulate malloc failure

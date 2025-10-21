@@ -117,6 +117,47 @@ describe('loadWASM', () => {
     expect(result.success).toBe(true);
     expect(initAiMock).toHaveBeenCalledTimes(1);
   });
+
+  it('should handle arrayBuffer() failure', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: jest.fn().mockRejectedValue(new Error('Buffer read error')),
+    });
+
+    const result = await loadWASM('/ai.wasm');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.type).toBe('wasm_load_error');
+      expect(result.error.reason).toBe('fetch_failed');
+      expect(result.error.message).toContain('Buffer read error');
+    }
+  });
+
+  it('should handle unexpected errors in outer try-catch', async () => {
+    // Create a fetch that throws during property access
+    const mockFetch = jest.fn().mockImplementation(() => {
+      const response = {
+        get ok() {
+          throw new Error('Unexpected property access error');
+        },
+      };
+      return Promise.resolve(response);
+    });
+
+    global.fetch = mockFetch;
+
+    const result = await loadWASM('/ai.wasm');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.type).toBe('wasm_load_error');
+      expect(result.error.reason).toBe('instantiation_failed');
+      expect(result.error.message).toContain(
+        'Unexpected property access error'
+      );
+    }
+  });
 });
 
 describe('isModuleReady', () => {
