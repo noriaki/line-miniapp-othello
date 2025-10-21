@@ -1,6 +1,5 @@
 import { applyMove, calculateValidMoves } from '../game-logic';
 import { createInitialBoard, setCellAt, getCellAt } from '../board';
-import { Board, Player, Position } from '../types';
 
 describe('Game Logic', () => {
   describe('applyMove', () => {
@@ -26,7 +25,7 @@ describe('Game Logic', () => {
     });
 
     it('should flip stones in multiple directions', () => {
-      let board = createInitialBoard();
+      const board = createInitialBoard();
       // Initial: (3,3)=white, (3,4)=black
       // After placing black at (3,2), it flips (3,3) horizontally
       const result = applyMove(board, { row: 3, col: 2 }, 'black');

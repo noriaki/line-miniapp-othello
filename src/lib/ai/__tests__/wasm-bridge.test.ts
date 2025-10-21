@@ -9,7 +9,7 @@ import {
   freeMemory,
   callAIFunction,
 } from '../wasm-bridge';
-import type { Board, Player } from '../../game/types';
+import type { Board } from '../../game/types';
 import type { EgaroucidWASMModule } from '../types';
 
 // Mock WASM module
@@ -36,28 +36,28 @@ const createMockModule = (): EgaroucidWASMModule => {
 
 describe('encodeBoard', () => {
   it('should encode empty board correctly', () => {
-    const module = createMockModule();
+    const wasmModule = createMockModule();
     const board: Board = Array(8)
       .fill(null)
       .map(() => Array(8).fill(null));
 
-    const result = encodeBoard(module, board, 'black');
+    const result = encodeBoard(wasmModule, board);
 
     expect(result.success).toBe(true);
     if (result.success) {
       const pointer = result.value;
       expect(pointer).toBeGreaterThanOrEqual(0);
-      expect(module._malloc).toHaveBeenCalledWith(64);
+      expect(wasmModule._malloc).toHaveBeenCalledWith(64);
 
       // Check that all cells are encoded as 0 (empty)
       for (let i = 0; i < 64; i++) {
-        expect(module.HEAPU8[pointer + i]).toBe(0);
+        expect(wasmModule.HEAPU8[pointer + i]).toBe(0);
       }
     }
   });
 
   it('should encode initial board state correctly', () => {
-    const module = createMockModule();
+    const wasmModule = createMockModule();
     // Create initial board with center 4 stones
     const board: Board = Array(8)
       .fill(null)
@@ -73,7 +73,7 @@ describe('encodeBoard', () => {
           })
       );
 
-    const result = encodeBoard(module, board, 'black');
+    const result = encodeBoard(wasmModule, board);
 
     expect(result.success).toBe(true);
     if (result.success) {
@@ -81,27 +81,27 @@ describe('encodeBoard', () => {
 
       // Check center stones are encoded correctly
       // Row 3, Col 3 (index 3*8+3=27): white (2)
-      expect(module.HEAPU8[pointer + 27]).toBe(2);
+      expect(wasmModule.HEAPU8[pointer + 27]).toBe(2);
       // Row 3, Col 4 (index 3*8+4=28): black (1)
-      expect(module.HEAPU8[pointer + 28]).toBe(1);
+      expect(wasmModule.HEAPU8[pointer + 28]).toBe(1);
       // Row 4, Col 3 (index 4*8+3=35): black (1)
-      expect(module.HEAPU8[pointer + 35]).toBe(1);
+      expect(wasmModule.HEAPU8[pointer + 35]).toBe(1);
       // Row 4, Col 4 (index 4*8+4=36): white (2)
-      expect(module.HEAPU8[pointer + 36]).toBe(2);
+      expect(wasmModule.HEAPU8[pointer + 36]).toBe(2);
 
       // Check other cells are empty (0)
-      expect(module.HEAPU8[pointer + 0]).toBe(0);
-      expect(module.HEAPU8[pointer + 63]).toBe(0);
+      expect(wasmModule.HEAPU8[pointer + 0]).toBe(0);
+      expect(wasmModule.HEAPU8[pointer + 63]).toBe(0);
     }
   });
 
   it('should return error for invalid board size', () => {
-    const module = createMockModule();
+    const wasmModule = createMockModule();
     const invalidBoard: Board = Array(7)
       .fill(null)
       .map(() => Array(7).fill(null));
 
-    const result = encodeBoard(module, invalidBoard, 'black');
+    const result = encodeBoard(wasmModule, invalidBoard);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -111,14 +111,14 @@ describe('encodeBoard', () => {
   });
 
   it('should return error when malloc fails', () => {
-    const module = createMockModule();
-    module._malloc = jest.fn().mockReturnValue(0); // Simulate malloc failure
+    const wasmModule = createMockModule();
+    wasmModule._malloc = jest.fn().mockReturnValue(0); // Simulate malloc failure
 
     const board: Board = Array(8)
       .fill(null)
       .map(() => Array(8).fill(null));
 
-    const result = encodeBoard(module, board, 'black');
+    const result = encodeBoard(wasmModule, board);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -128,7 +128,7 @@ describe('encodeBoard', () => {
   });
 
   it('should handle complex board state with multiple stones', () => {
-    const module = createMockModule();
+    const wasmModule = createMockModule();
     const board: Board = [
       ['black', 'white', null, null, null, null, null, null],
       [null, 'black', 'white', null, null, null, null, null],
@@ -140,17 +140,17 @@ describe('encodeBoard', () => {
       ['white', null, null, null, null, null, null, 'black'],
     ];
 
-    const result = encodeBoard(module, board, 'white');
+    const result = encodeBoard(wasmModule, board);
 
     expect(result.success).toBe(true);
     if (result.success) {
       const pointer = result.value;
 
       // Spot check a few positions
-      expect(module.HEAPU8[pointer + 0]).toBe(1); // Row 0, Col 0: black
-      expect(module.HEAPU8[pointer + 1]).toBe(2); // Row 0, Col 1: white
-      expect(module.HEAPU8[pointer + 2]).toBe(0); // Row 0, Col 2: null
-      expect(module.HEAPU8[pointer + 63]).toBe(1); // Row 7, Col 7: black
+      expect(wasmModule.HEAPU8[pointer + 0]).toBe(1); // Row 0, Col 0: black
+      expect(wasmModule.HEAPU8[pointer + 1]).toBe(2); // Row 0, Col 1: white
+      expect(wasmModule.HEAPU8[pointer + 2]).toBe(0); // Row 0, Col 2: null
+      expect(wasmModule.HEAPU8[pointer + 63]).toBe(1); // Row 7, Col 7: black
     }
   });
 });
@@ -222,42 +222,42 @@ describe('decodeResponse', () => {
 
 describe('freeMemory', () => {
   it('should call _free with correct pointer', () => {
-    const module = createMockModule();
+    const wasmModule = createMockModule();
     const pointer = 64;
 
-    freeMemory(module, pointer);
+    freeMemory(wasmModule, pointer);
 
-    expect(module._free).toHaveBeenCalledWith(pointer);
-    expect(module._free).toHaveBeenCalledTimes(1);
+    expect(wasmModule._free).toHaveBeenCalledWith(pointer);
+    expect(wasmModule._free).toHaveBeenCalledTimes(1);
   });
 
   it('should handle zero pointer gracefully', () => {
-    const module = createMockModule();
+    const wasmModule = createMockModule();
 
     // Should not throw
-    expect(() => freeMemory(module, 0)).not.toThrow();
+    expect(() => freeMemory(wasmModule, 0)).not.toThrow();
   });
 });
 
 describe('callAIFunction', () => {
   it('should successfully call WASM function', () => {
-    const module = createMockModule();
-    module._calc_value = jest.fn().mockReturnValue(27); // Return position (3,3)
+    const wasmModule = createMockModule();
+    wasmModule._calc_value = jest.fn().mockReturnValue(27); // Return position (3,3)
 
     const boardPointer = 64;
-    const result = callAIFunction(module, boardPointer);
+    const result = callAIFunction(wasmModule, boardPointer);
 
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.value).toBe(27);
-      expect(module._calc_value).toHaveBeenCalledWith(boardPointer);
+      expect(wasmModule._calc_value).toHaveBeenCalledWith(boardPointer);
     }
   });
 
   it('should return error for null pointer', () => {
-    const module = createMockModule();
+    const wasmModule = createMockModule();
 
-    const result = callAIFunction(module, 0);
+    const result = callAIFunction(wasmModule, 0);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -267,13 +267,13 @@ describe('callAIFunction', () => {
   });
 
   it('should handle WASM execution errors', () => {
-    const module = createMockModule();
-    module._calc_value = jest.fn().mockImplementation(() => {
+    const wasmModule = createMockModule();
+    wasmModule._calc_value = jest.fn().mockImplementation(() => {
       throw new Error('WASM execution failed');
     });
 
     const boardPointer = 64;
-    const result = callAIFunction(module, boardPointer);
+    const result = callAIFunction(wasmModule, boardPointer);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -283,16 +283,14 @@ describe('callAIFunction', () => {
     }
   });
 
-  it('should pass options to WASM function (future enhancement)', () => {
-    const module = createMockModule();
-    module._calc_value = jest.fn().mockReturnValue(15);
+  it('should call WASM function with board pointer', () => {
+    const wasmModule = createMockModule();
+    wasmModule._calc_value = jest.fn().mockReturnValue(15);
 
     const boardPointer = 64;
-    const options = { difficulty: 5, depth: 10, timeout: 3000 };
-    const result = callAIFunction(module, boardPointer, options);
+    const result = callAIFunction(wasmModule, boardPointer);
 
     expect(result.success).toBe(true);
-    // Note: Currently options are not used, but function accepts them for future use
-    expect(module._calc_value).toHaveBeenCalledWith(boardPointer);
+    expect(wasmModule._calc_value).toHaveBeenCalledWith(boardPointer);
   });
 });
