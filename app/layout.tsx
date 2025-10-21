@@ -1,9 +1,10 @@
+import React from 'react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'LINE Reversi - リバーシゲーム',
-  description: 'LINEミニアプリで遊べるリバーシゲーム。AIと対戦しよう！',
+  description: 'LINEミニアプリで遊べるリバーシゲーム。AIと対戦しよう!',
 };
 
 export const viewport: Viewport = {

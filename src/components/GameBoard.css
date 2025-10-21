@@ -1,0 +1,265 @@
+.game-board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.game-status {
+  text-align: center;
+  width: 100%;
+}
+
+.stone-count {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.stone-count-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.stone-count-divider {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #999;
+  padding: 0 0.5rem;
+}
+
+.stone-display {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.stone-display-black {
+  background: radial-gradient(circle at 30% 30%, #4a4a4a, #000000);
+}
+
+.stone-display-white {
+  background: radial-gradient(circle at 30% 30%, #ffffff, #e0e0e0);
+  border: 1px solid #ccc;
+}
+
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  background-color: #1e3a0f;
+  padding: 4px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 1;
+  margin-top: 0.5rem;
+}
+
+.board-cell {
+  aspect-ratio: 1;
+  background-color: #4a9932;
+  border: none;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.board-cell:hover:not(:disabled) {
+  background-color: #5cb043;
+  transform: scale(1.02);
+}
+
+.board-cell:disabled {
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
+.board-cell.valid-move {
+  background-color: #5cb043;
+  box-shadow: inset 0 0 0 2px rgba(255, 215, 0, 0.3);
+}
+
+.stone {
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  animation: placeStone 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.stone-black {
+  background: radial-gradient(circle at 30% 30%, #4a4a4a, #000000);
+}
+
+.stone-white {
+  background: radial-gradient(circle at 30% 30%, #ffffff, #e0e0e0);
+}
+
+.valid-hint {
+  width: 40%;
+  height: 40%;
+  border-radius: 50%;
+  background-color: rgba(255, 215, 0, 0.75);
+  border: 3px solid rgba(255, 193, 7, 0.95);
+  animation: pulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+}
+
+@keyframes placeStone {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.game-result {
+  text-align: center;
+  width: 100%;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.game-finished-text {
+  color: #059142;
+  /* Darker green for better contrast ratio (4.52:1 on white) */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reset-button {
+  min-width: 200px;
+  padding: 14px 32px;
+  background-color: #06c755;
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(6, 199, 85, 0.3);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.reset-button:hover {
+  background-color: #05b34c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(6, 199, 85, 0.4);
+}
+
+.reset-button:active {
+  background-color: #049c43;
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(6, 199, 85, 0.3);
+}
+
+/* Responsive design for mobile */
+@media (max-width: 640px) {
+  .game-board {
+    gap: 1rem;
+    padding: 0.75rem;
+  }
+
+  .board-grid {
+    max-width: 100%;
+    padding: 4px;
+  }
+
+  .stone-count {
+    padding: 0.75rem;
+    gap: 1rem;
+  }
+
+  .stone-count-item span {
+    font-size: 1.5rem;
+  }
+
+  .stone-display {
+    width: 28px;
+    height: 28px;
+  }
+
+  .turn-indicator p {
+    font-size: 1.125rem;
+  }
+
+  .turn-indicator .w-6 {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 375px) {
+  .game-board {
+    gap: 0.75rem;
+    padding: 0.5rem;
+  }
+
+  .board-grid {
+    padding: 2px;
+    gap: 1px;
+  }
+
+  .stone-count {
+    padding: 0.5rem;
+    gap: 0.75rem;
+  }
+
+  .stone-count-item span {
+    font-size: 1.25rem;
+  }
+
+  .stone-display {
+    width: 24px;
+    height: 24px;
+  }
+}
