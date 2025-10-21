@@ -26,7 +26,8 @@ describe('AI Worker Module', () => {
 
   beforeAll(() => {
     // Mock Worker global scope
-    (global as { self: { postMessage: jest.Mock } }).self = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).self = {
       postMessage: jest.fn(),
     };
   });
@@ -57,10 +58,11 @@ describe('AI Worker Module', () => {
       value: { row: 2, col: 3 },
     });
 
-    (freeMemory as jest.MockedFunction<typeof freeMemory>).mockReturnValue({
-      success: true,
-      value: undefined,
-    });
+    (freeMemory as jest.MockedFunction<typeof freeMemory>).mockImplementation(
+      () => {
+        // freeMemory returns void
+      }
+    );
   });
 
   it('should be importable', async () => {
