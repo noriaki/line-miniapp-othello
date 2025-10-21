@@ -7,11 +7,14 @@ argument-hint: <feature-name> [-y]
 # Implementation Tasks Generator
 
 ## Parse Arguments
+
 - Feature name: `$1`
 - Auto-approve flag: `$2` (optional, "-y")
 
 ## Validate
+
 Check that design has been completed:
+
 - Verify `.kiro/specs/$1/` exists
 - Verify `.kiro/specs/$1/design.md` exists
 
@@ -50,16 +53,19 @@ Show SubAgent summary to user, then provide next step guidance:
 ### Next Phase: Implementation
 
 **Before Starting Implementation**:
+
 - **IMPORTANT**: Clear conversation history and free up context before running `/kiro:spec-impl`
 - This applies when starting first task OR switching between tasks
 - Fresh context ensures clean state and proper task focus
 
 **If Tasks Approved**:
+
 - Execute specific task: `/kiro:spec-impl $1 1.1` (recommended: clear context between each task)
 - Execute multiple tasks: `/kiro:spec-impl $1 1.1,1.2` (use cautiously, clear context between tasks)
 - Without arguments: `/kiro:spec-impl $1` (executes all pending tasks - NOT recommended due to context bloat)
 
 **If Modifications Needed**:
+
 - Provide feedback and re-run `/kiro:spec-tasks $1`
 - Existing tasks used as reference (merge mode)
 

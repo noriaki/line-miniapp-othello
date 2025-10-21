@@ -40,4 +40,3 @@ Use this structure for all implementation tasks:
   - _Requirements: 5.1, 5.2, 5.4_
 
 - [ ] 3. Next major task...
-
