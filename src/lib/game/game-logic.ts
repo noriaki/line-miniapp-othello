@@ -7,6 +7,9 @@ import { Board, Player, Position } from './types';
 import { getCellAt, setCellAt } from './board';
 import { validateMove, findAllFlips } from './move-validator';
 
+// Re-export for convenience
+export { validateMove } from './move-validator';
+
 export interface MoveApplicationError {
   readonly type: 'move_application_error';
   readonly reason: string;

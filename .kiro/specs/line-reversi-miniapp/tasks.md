@@ -92,42 +92,42 @@
 
 ## 4. ゲーム UI とインタラクションの実装
 
-- [ ] 4.1 Server Component によるページ生成
+- [x] 4.1 Server Component によるページ生成
   - app/page.tsx を Server Component として実装し、SSG を構成
   - メタデータ (title, description, viewport, themeColor) を設定
   - 静的 HTML を生成し、GameBoard Client Component をマウント
   - ビルド時の HTML 生成を確認
   - _Requirements: 1.4, 5.3, 8.1_
 
-- [ ] 4.2 GameBoard Client Component の実装
+- [x] 4.2 GameBoard Client Component の実装
   - "use client" ディレクティブを付与し、Client Component として実装
   - useGameState フックでゲーム状態を管理 (board, currentPlayer, validMoves, gameStatus)
   - useGameLogic フックでゲームロジックを統合
   - useAIPlayer フックで AI 対戦ロジックを統合
   - _Requirements: 1.1, 2.1, 5.2, 5.4_
 
-- [ ] 4.3 ボードレンダリングと視覚的フィードバック
+- [x] 4.3 ボードレンダリングと視覚的フィードバック
   - BoardRenderer コンポーネントを実装し、8×8 グリッドを表示
   - 黒石、白石、空きマスを視覚的に区別して描画
   - 有効手のハイライト表示機能を実装
   - タップ操作に即座に反応する視覚的フィードバックを実装
   - _Requirements: 1.1, 1.5, 2.3, 6.1, 6.2_
 
-- [ ] 4.4 石の配置とアニメーション
+- [x] 4.4 石の配置とアニメーション
   - ユーザのマスタップを処理し、石を配置する機能を実装
   - 無効な手をタップした際のエラーフィードバック (赤ハイライト) を実装
   - 石配置時と反転時のアニメーション効果を CSS で実装
   - アニメーションのパフォーマンス最適化 (CSS transform, transition) を実施
   - _Requirements: 2.1, 2.2, 6.2, 6.3_
 
-- [ ] 4.5 ゲーム状態表示とターン管理 UI
+- [x] 4.5 ゲーム状態表示とターン管理 UI
   - 現在のターン (ユーザまたは AI) を明確に表示するコンポーネントを実装
   - 黒石と白石の現在の数をリアルタイムで表示
   - AI 思考中のローディングインジケーターを表示
   - ターンスキップ時のメッセージ表示機能を実装
   - _Requirements: 3.5, 6.4, 6.5_
 
-- [ ] 4.6 ゲーム終了と結果表示
+- [x] 4.6 ゲーム終了と結果表示
   - ゲーム終了時の結果画面 (勝敗、最終スコア) を実装
   - 新しいゲームを開始するボタンを配置
   - ゲームリセット機能を実装し、全状態を初期化
