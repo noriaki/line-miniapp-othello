@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import GameBoard from '../GameBoard';
 
 // Mock useAIPlayer hook to avoid import.meta issues in tests
@@ -32,13 +33,16 @@ describe('GameBoard Component', () => {
 
   it('現在のターンを表示すること', () => {
     render(<GameBoard />);
-    expect(screen.getByText(/黒のターン/)).toBeInTheDocument();
+    expect(screen.getByText(/あなたのターン/)).toBeInTheDocument();
   });
 
   it('石数をリアルタイムで表示すること', () => {
-    render(<GameBoard />);
+    const { container } = render(<GameBoard />);
     // 初期状態: 黒2個、白2個
-    expect(screen.getByText(/黒.*2/)).toBeInTheDocument();
-    expect(screen.getByText(/白.*2/)).toBeInTheDocument();
+    const stoneCountItems = container.querySelectorAll('.stone-count-item');
+    expect(stoneCountItems.length).toBe(2);
+    // 石数が表示されていることを確認（数字として）
+    const counts = screen.getAllByText('2');
+    expect(counts.length).toBe(2); // 黒と白の両方
   });
 });
