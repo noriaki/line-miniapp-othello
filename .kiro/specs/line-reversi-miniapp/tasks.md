@@ -55,35 +55,35 @@
 
 ## 3. WebAssembly AI エンジンの統合
 
-- [ ] 3.1 WASM モジュールのロードと初期化
+- [x] 3.1 WASM モジュールのロードと初期化
   - ai.wasm ファイルをロードする loadWASM 関数を実装
   - Emscripten Runtime の初期化完了を待機する処理を実装
   - \_init_ai() 関数を呼び出し AI を初期化
   - WASM ロード失敗時のエラーハンドリングを実装
   - _Requirements: 4.1, 4.5, 9.1_
 
-- [ ] 3.2 ボード状態のエンコーディングとデコーディング
+- [x] 3.2 ボード状態のエンコーディングとデコーディング
   - JavaScript の Board 状態を 64 bytes の Uint8Array にエンコードする関数を実装
   - セル値 (0=空, 1=黒, 2=白) のマッピングを正確に実装
   - WASM メモリへの書き込み処理 (\_malloc、HEAP8) を実装
   - WASM 応答 (0-63 の整数) を Position 型にデコードする関数を実装
   - _Requirements: 4.2, 4.3, 4.4_
 
-- [ ] 3.3 WASM 関数呼び出しとエラーハンドリング
+- [x] 3.3 WASM 関数呼び出しとエラーハンドリング
   - \_calc_value() を呼び出し、最善手を計算する関数を実装
   - 関数シグネチャ (\_calc_value(a0, a1?, a2?, a3?)) を検証し、必要なパラメータを特定
   - 無効な応答 (範囲外の値) を検出するバリデーションを実装
   - メモリリークを防止するため、計算後に \_free() を確実に呼び出す処理を実装
   - _Requirements: 3.2, 3.3, 3.4, 4.4, 4.5_
 
-- [ ] 3.4 Web Worker による AI 計算の非同期化
+- [x] 3.4 Web Worker による AI 計算の非同期化
   - ai-worker.ts を作成し、WASM 計算を Worker スレッドで実行
   - メインスレッドと Worker 間のメッセージング (AIWorkerRequest/Response) を実装
   - 3秒タイムアウトを設定し、超過時はランダムな有効手にフォールバックする処理を実装
   - Worker 内で WASM モジュールを再利用し、パフォーマンスを最適化
   - _Requirements: 3.5, 8.2, 8.3_
 
-- [ ] 3.5 AIEngine サービスの高レベル API 実装
+- [x] 3.5 AIEngine サービスの高レベル API 実装
   - AIEngine の initialize、calculateMove、isReady、dispose 関数を実装
   - WASMBridge を呼び出し、エラーを Result 型で返す処理を実装
   - AI 計算中の状態管理 (isAIThinking フラグ) を実装
