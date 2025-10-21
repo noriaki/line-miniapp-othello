@@ -2,21 +2,21 @@
 
 ## 1. プロジェクト基盤のセットアップ
 
-- [ ] 1.1 Next.js プロジェクトの初期化とツール設定
+- [x] 1.1 Next.js プロジェクトの初期化とツール設定
   - Next.js 14+ (App Router) プロジェクトを作成し、TypeScript strict mode を有効化
   - pnpm をパッケージマネージャとして設定し、package.json を構成
   - `.node-version` ファイルに Node.js 24.x を指定し、nodenv による環境管理を構成
   - ESLint (eslint-config-next)、Prettier、TypeScript コンパイラを設定
   - _Requirements: 5.1, 5.4, 8.1_
 
-- [ ] 1.2 プロジェクト構造とディレクトリの確立
+- [x] 1.2 プロジェクト構造とディレクトリの確立
   - クライアント側とサーバ側を分離したディレクトリ構造を作成
   - `app/` (Server Components)、`src/components/` (Client Components)、`src/hooks/`、`src/lib/` を配置
   - `src/workers/` ディレクトリを作成し、Web Worker 用のファイルを準備
   - 静的アセット用 `public/` ディレクトリを構成し、ai.wasm を配置
   - _Requirements: 5.1, 5.2, 5.3, 5.5_
 
-- [ ] 1.3 スタイリングとUI基盤の構築
+- [x] 1.3 スタイリングとUI基盤の構築
   - Tailwind CSS をインストールし、スマートフォン最適化の設定を追加
   - CSS Modules の設定を有効化し、グローバルスタイルを定義
   - レスポンシブデザイン用のブレークポイントとテーマカラーを設定
@@ -58,22 +58,22 @@
 - [ ] 3.1 WASM モジュールのロードと初期化
   - ai.wasm ファイルをロードする loadWASM 関数を実装
   - Emscripten Runtime の初期化完了を待機する処理を実装
-  - _init_ai() 関数を呼び出し AI を初期化
+  - \_init_ai() 関数を呼び出し AI を初期化
   - WASM ロード失敗時のエラーハンドリングを実装
   - _Requirements: 4.1, 4.5, 9.1_
 
 - [ ] 3.2 ボード状態のエンコーディングとデコーディング
   - JavaScript の Board 状態を 64 bytes の Uint8Array にエンコードする関数を実装
   - セル値 (0=空, 1=黒, 2=白) のマッピングを正確に実装
-  - WASM メモリへの書き込み処理 (_malloc、HEAP8) を実装
+  - WASM メモリへの書き込み処理 (\_malloc、HEAP8) を実装
   - WASM 応答 (0-63 の整数) を Position 型にデコードする関数を実装
   - _Requirements: 4.2, 4.3, 4.4_
 
 - [ ] 3.3 WASM 関数呼び出しとエラーハンドリング
-  - _calc_value() を呼び出し、最善手を計算する関数を実装
-  - 関数シグネチャ (_calc_value(a0, a1?, a2?, a3?)) を検証し、必要なパラメータを特定
+  - \_calc_value() を呼び出し、最善手を計算する関数を実装
+  - 関数シグネチャ (\_calc_value(a0, a1?, a2?, a3?)) を検証し、必要なパラメータを特定
   - 無効な応答 (範囲外の値) を検出するバリデーションを実装
-  - メモリリークを防止するため、計算後に _free() を確実に呼び出す処理を実装
+  - メモリリークを防止するため、計算後に \_free() を確実に呼び出す処理を実装
   - _Requirements: 3.2, 3.3, 3.4, 4.4, 4.5_
 
 - [ ] 3.4 Web Worker による AI 計算の非同期化
