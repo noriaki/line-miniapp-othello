@@ -4,6 +4,7 @@
  */
 
 import { loadWASM, isModuleReady } from '../wasm-loader';
+import type { EgaroucidWASMModule } from '../types';
 
 // Mock WebAssembly API
 const mockWASMModule = {

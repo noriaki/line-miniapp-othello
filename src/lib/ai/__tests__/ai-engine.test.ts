@@ -52,8 +52,8 @@ class MockWorker {
 }
 
 // Mock Worker constructor
-(global as typeof globalThis & { Worker: typeof MockWorker }).Worker =
-  MockWorker;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(global as any).Worker = MockWorker;
 
 describe('AIEngine', () => {
   let aiEngine: AIEngine;
@@ -110,7 +110,8 @@ describe('AIEngine', () => {
       // Mock worker that never responds
       const slowWorker = new MockWorker();
       slowWorker.postMessage = jest.fn(); // Does not call onmessage
-      (aiEngine as AIEngine & { worker: MockWorker }).worker = slowWorker;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (aiEngine as any).worker = slowWorker;
 
       const result = await aiEngine.calculateMove(emptyBoard, 'white', 100);
 
@@ -142,7 +143,8 @@ describe('AIEngine', () => {
   describe('dispose', () => {
     it('should clean up worker resources', async () => {
       await aiEngine.initialize();
-      const worker = (aiEngine as AIEngine & { worker: MockWorker }).worker;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const worker = (aiEngine as any).worker;
       const terminateSpy = jest.spyOn(worker, 'terminate');
 
       aiEngine.dispose();
