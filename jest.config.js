@@ -8,6 +8,7 @@ module.exports = {
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
     '!src/**/__tests__/**',
+    '!src/workers/**', // Exclude Web Workers (difficult to test in Node.js)
   ],
   coverageThreshold: {
     global: {
