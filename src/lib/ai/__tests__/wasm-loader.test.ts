@@ -120,7 +120,7 @@ describe('loadWASM', () => {
 
 describe('isModuleReady', () => {
   it('should return true for valid module', () => {
-    expect(isModuleReady(mockWASMModule as any)).toBe(true);
+    expect(isModuleReady(mockWASMModule)).toBe(true);
   });
 
   it('should return false for null module', () => {
@@ -128,15 +128,15 @@ describe('isModuleReady', () => {
   });
 
   it('should return false for undefined module', () => {
-    expect(isModuleReady(undefined as any)).toBe(false);
+    expect(isModuleReady(undefined)).toBe(false);
   });
 
   it('should return false for module missing required functions', () => {
-    const incompleteModule = {
+    const incompleteModule: Partial<EgaroucidWASMModule> = {
       _malloc: jest.fn(),
       // Missing _calc_value and other required functions
     };
 
-    expect(isModuleReady(incompleteModule as any)).toBe(false);
+    expect(isModuleReady(incompleteModule as EgaroucidWASMModule)).toBe(false);
   });
 });

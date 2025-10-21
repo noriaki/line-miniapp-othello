@@ -11,7 +11,7 @@ class MockWorker {
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
 
-  postMessage(data: any): void {
+  postMessage(): void {
     // Simulate async response
     setTimeout(() => {
       if (this.onmessage) {
@@ -42,7 +42,7 @@ class MockWorker {
     }
   }
 
-  removeEventListener(type: string, listener: EventListener): void {
+  removeEventListener(type: string): void {
     if (type === 'message') {
       this.onmessage = null;
     } else if (type === 'error') {
@@ -52,7 +52,8 @@ class MockWorker {
 }
 
 // Mock Worker constructor
-(global as any).Worker = MockWorker;
+(global as typeof globalThis & { Worker: typeof MockWorker }).Worker =
+  MockWorker;
 
 describe('AIEngine', () => {
   let aiEngine: AIEngine;
@@ -109,7 +110,7 @@ describe('AIEngine', () => {
       // Mock worker that never responds
       const slowWorker = new MockWorker();
       slowWorker.postMessage = jest.fn(); // Does not call onmessage
-      (aiEngine as any).worker = slowWorker;
+      (aiEngine as AIEngine & { worker: MockWorker }).worker = slowWorker;
 
       const result = await aiEngine.calculateMove(emptyBoard, 'white', 100);
 
@@ -141,7 +142,7 @@ describe('AIEngine', () => {
   describe('dispose', () => {
     it('should clean up worker resources', async () => {
       await aiEngine.initialize();
-      const worker = (aiEngine as any).worker;
+      const worker = (aiEngine as AIEngine & { worker: MockWorker }).worker;
       const terminateSpy = jest.spyOn(worker, 'terminate');
 
       aiEngine.dispose();

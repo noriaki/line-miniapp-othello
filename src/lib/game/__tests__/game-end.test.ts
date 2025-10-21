@@ -1,7 +1,7 @@
 import { checkGameEnd } from '../game-end';
 import { createInitialBoard, setCellAt, countStones } from '../board';
 import { calculateValidMoves } from '../game-logic';
-import { Board } from '../types';
+import type { Position } from '../types';
 
 describe('Game End Logic', () => {
   describe('checkGameEnd', () => {
@@ -32,8 +32,8 @@ describe('Game End Logic', () => {
 
     it('should detect game end when both players have no valid moves', () => {
       const board = createInitialBoard();
-      const blackMoves: any[] = [];
-      const whiteMoves: any[] = [];
+      const blackMoves: Position[] = [];
+      const whiteMoves: Position[] = [];
 
       const result = checkGameEnd(board, blackMoves, whiteMoves);
       expect(result.ended).toBe(true);
@@ -91,7 +91,7 @@ describe('Game End Logic', () => {
     it('should continue game when at least one player has valid moves', () => {
       const board = createInitialBoard();
       const blackMoves = calculateValidMoves(board, 'black');
-      const whiteMoves: any[] = []; // White has no moves but black does
+      const whiteMoves: Position[] = []; // White has no moves but black does
 
       const result = checkGameEnd(board, blackMoves, whiteMoves);
       expect(result.ended).toBe(false);
