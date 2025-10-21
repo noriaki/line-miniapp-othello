@@ -10,6 +10,9 @@ out/
 dist/
 build/
 
+# Next.js generated files
+next-env.d.ts
+
 # Static files
 public/
 
