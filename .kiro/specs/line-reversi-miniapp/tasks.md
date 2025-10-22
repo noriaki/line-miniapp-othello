@@ -134,68 +134,53 @@
   - 結果画面のアニメーション演出を実装
   - _Requirements: 2.5, 2.6, 6.6, 6.7_
 
-## 5. WASM インテグレーションテスト (C++ソースコード解析に基づく実動作検証)
+## 5. WASM インテグレーションテスト
 
-**背景**: `.analysis/egaroucid/src/` のC++ソースコード解析により、Egaroucid WASM の完全な仕様が確定しました。以下のテストは、解析された仕様に基づいた実際の `ai.wasm` ファイルの動作検証です。
-
-**参照ドキュメント**:
-
-- [analysis-report.md](./wasm-source-analysis/analysis-report.md) - C++ソースコード解析の包括的レポート
-- [interface-spec.md](./wasm-source-analysis/interface-spec.md) - WASM統合の実装仕様
-
-- [x] 5.1 WASM モジュールロードと基本インタフェース検証
-  - Emscripten グルーコード (`ai.js`) を介した `ai.wasm` のロード
-  - `Module.onRuntimeInitialized` イベントの正常完了確認
-  - 全エクスポート関数の存在確認: `_init_ai`, `_calc_value`, `_ai_js`, `_stop`, `_resume`, `_malloc`, `_free`
-  - メモリインタフェースの検証: `Module.memory`, `Module.HEAP8`, `Module.HEAPU8`, `Module.HEAP32`
+- [x] 5.1 Jest環境構成とWASMモジュールロード
+  - Node.js環境でのJest設定 (@jest-environment node)
+  - .kiro/specs/line-reversi-miniapp/resources/ai.js と ai.wasm を使用
+  - EmscriptenモジュールのロードとonRuntimeInitialized待機
+  - エクスポート関数の存在確認 (\_init_ai, \_ai_js, \_calc_value, \_stop, \_resume, \_malloc, \_free)
   - _Requirements: 3.1, 4.1_
 
-- [x] 5.2 ボードエンコーディングと座標系の検証
-  - Int32Array (64要素、256 bytes) による正確なボードエンコーディング
-  - セル値マッピングの検証: `-1 = empty`, `0 = black`, `1 = white`
-  - ビット位置変換の検証: `bit_position = 63 - (row * 8 + col)`
-  - 実際のボード状態 (初期配置、中盤、終盤) での正確な変換
-  - _Requirements: 4.2, 4.3_
+- [x] 5.2 ボードエンコーディングと \_ai_js 関数の実動作検証
+  - Int32Array (64要素、256 bytes) による実際のボードエンコード実装
+  - セル値マッピング: -1 = empty, 0 = black, 1 = white
+  - 実際の ai.wasm を使用した \_ai_js(boardPtr, level, ai_player) の呼び出し
+  - 返り値のビット位置デコード: cell_index = 63 - return_value
+  - 初期配置、中盤、終盤の各ボード状態でのテスト
+  - _Requirements: 4.2, 4.3, 4.4_
 
-- [x] 5.3 AI計算関数 (`_calc_value`) の実動作検証
-  - `_calc_value(boardPtr)` の基本動作確認（単一パラメータでの呼び出し）
-  - 返り値のデコード: `policy = 63 - (return_value - 10)` (オフセット10の考慮)
-  - `ai_player` パラメータの影響検証（内部的に `1 - ai_player` で反転されること）
-  - Level 0-60 の各レベルでの動作確認
+- [ ] 5.3 \_calc_value 関数による評価値計算の検証
+  - \_calc_value(boardPtr, resPtr, level, ai_player) の実動作テスト
+  - 返り値配列 (74要素) の検証: res[10-73] = ビット位置 63-0 の評価値
   - Level 0 のランダム性検証（複数回実行で異なる結果）
-  - Book統合の検証（序盤で `depth = -1` が返ることの確認）
-  - Pass処理の検証（両者打てる手がない場合 `policy = -1` が返ること）
-  - _Requirements: 3.2, 3.3, 3.4, 4.4_
+  - 非合法手の -1 判定確認
+  - 評価値の正負による有利/不利の判定確認
+  - _Requirements: 3.2, 3.3, 3.4_
 
-- [x] 5.4 メモリ管理の完全検証
-  - `_malloc(256)` によるボード用メモリ確保（256 bytes = Int32Array 64要素）
-  - `Module.HEAP32` を介したメモリへの読み書き
-  - `_free(ptr)` による適切なメモリ解放
+- [ ] 5.4 メモリ管理の完全検証
+  - \_malloc(256) によるボード用メモリ確保テスト
+  - Module.HEAP32 を介したメモリ読み書き検証
+  - \_free(ptr) による適切なメモリ解放テスト
   - 連続10回の AI 計算でメモリリークがないことを確認
-  - 不正なポインタ (0) に対する `_free` の安全性確認
+  - 不正なポインタ (0) に対する \_free の安全性確認
   - _Requirements: 4.5, 8.2, 8.3_
 
-- [x] 5.5 パフォーマンスとタイムアウトの検証
-  - 初期ボード、中盤、終盤の各状態での計算時間測定 (目標: < 3秒)
-  - `_stop()` による計算中断機能の動作確認
-  - `_resume()` による計算再開機能の動作確認
-  - Web Worker環境での実行とメインスレッドのブロッキング回避
-  - 複雑なボード状態 (後半戦、空きマス少ない) でのパフォーマンス測定
+- [ ] 5.5 パフォーマンスとタイムアウトの検証
+  - Level 0-5 での計算時間測定 (目標: 各3秒以内)
+  - 初期ボード、中盤、終盤の各状態での計算時間計測
+  - \_stop() と \_resume() の動作確認
+  - 統合テストファイルとして wasm.integration.test.ts を作成
   - _Requirements: 3.5, 8.2, 8.3_
 
-- [x] 5.6 エラーケースとエッジケースの検証
+- [ ] 5.6 エラーケースとエッジケースの検証
   - 不正なボードサイズ (63要素、65要素) に対するエラーハンドリング
   - 不正なセル値 (範囲外の整数) に対する挙動確認
-  - `_malloc` 失敗時 (return 0) のハンドリング
+  - \_malloc 失敗時 (return 0) のハンドリング
   - 返り値の範囲外チェック (< 0 or >= 64)
-  - 初期化前の `_calc_value` 呼び出しに対するエラー処理
+  - 初期化前の関数呼び出しに対するエラー処理
   - _Requirements: 4.5, 9.1, 9.3_
-
-**重要な注記**:
-
-- 現在の `wasm-bridge.ts` 実装は、解析前の推測に基づいているため、**ボードエンコーディングが不正確** (Uint8Array 64 bytes, 0=empty/1=black/2=white) です。
-- 正しい仕様は **Int32Array 64要素 (256 bytes), -1=empty/0=black/1=white, ビット位置変換必須** です。
-- Task 5完了後、`wasm-bridge.ts` の実装を正しい仕様に修正する必要があります（Task 3.2 の再実装）。
 
 ## 6. LINE ミニアプリ統合
 
