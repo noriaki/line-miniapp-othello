@@ -67,7 +67,11 @@ describe('AI Module Exports', () => {
     });
 
     it('should allow decodeResponse to work with valid input', () => {
-      const result = decodeResponse(27);
+      // FIXED: Use _ai_js response format
+      // Row 3, Col 3 → index 27 → bit position 36
+      // policy = 36, value = 5
+      // encoded = 1000*(63-36)+100+5 = 27105
+      const result = decodeResponse(27105);
 
       expect(result.success).toBe(true);
       if (result.success) {

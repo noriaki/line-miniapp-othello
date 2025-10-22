@@ -19,8 +19,8 @@ import type {
  * @param board - 8x8 board state
  * @returns Result with memory pointer or error
  *
- * Board encoding: 64 bytes (8x8 grid in row-major order)
- * Cell values: 0 = empty, 1 = black, 2 = white
+ * Board encoding: 256 bytes (8x8 grid in row-major order, Int32Array)
+ * Cell values: -1 = empty, 0 = black, 1 = white
  */
 export function encodeBoard(
   module: EgaroucidWASMModule,
@@ -51,8 +51,8 @@ export function encodeBoard(
     }
   }
 
-  // Allocate WASM memory (64 bytes)
-  const boardPtr = module._malloc(64);
+  // Allocate WASM memory (256 bytes = 64 Int32 elements)
+  const boardPtr = module._malloc(256);
 
   if (boardPtr === 0) {
     return {
@@ -65,6 +65,9 @@ export function encodeBoard(
     };
   }
 
+  // Access memory as Int32Array
+  const heap = new Int32Array(module.HEAP32.buffer, boardPtr, 64);
+
   // Encode board to WASM memory
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
@@ -73,11 +76,11 @@ export function encodeBoard(
 
       let value: number;
       if (cell === null) {
-        value = 0; // Empty
+        value = -1; // Empty
       } else if (cell === 'black') {
-        value = 1; // Black
+        value = 0; // Black
       } else if (cell === 'white') {
-        value = 2; // White
+        value = 1; // White
       } else {
         // Invalid cell value
         module._free(boardPtr);
@@ -91,7 +94,7 @@ export function encodeBoard(
         };
       }
 
-      module.HEAPU8[boardPtr + index] = value;
+      heap[index] = value;
     }
   }
 
@@ -102,31 +105,53 @@ export function encodeBoard(
 }
 
 /**
- * Decode WASM response to Position
- * @param encodedPosition - Encoded position (0-63)
+ * Decode WASM _ai_js response to Position
+ * @param encodedResult - Encoded result from _ai_js (format: 1000*(63-policy)+100+value)
  * @returns Result with Position or error
  *
- * Position decoding:
- * - row = Math.floor(encodedPosition / 8)
- * - col = encodedPosition % 8
+ * Response format: 1000*(63-policy)+100+value
+ * - policy: bit position (0-63)
+ * - value: evaluation score
+ *
+ * Decoding steps:
+ * 1. policy = 63 - Math.floor((result - 100) / 1000)
+ * 2. index = 63 - policy
+ * 3. row = Math.floor(index / 8), col = index % 8
  */
 export function decodeResponse(
-  encodedPosition: number
+  encodedResult: number
 ): Result<Position, DecodeError> {
-  // Validate range
-  if (encodedPosition < 0 || encodedPosition >= 64) {
+  // Minimum valid response is 100 (policy=63, value=0)
+  if (encodedResult < 100) {
     return {
       success: false,
       error: {
         type: 'decode_error',
         reason: 'invalid_response',
-        message: `Invalid position: ${encodedPosition} (must be 0-63)`,
+        message: `Invalid response: ${encodedResult} (minimum is 100)`,
       },
     };
   }
 
-  const row = Math.floor(encodedPosition / 8);
-  const col = encodedPosition % 8;
+  // Decode: policy = 63 - Math.floor((result - 100) / 1000)
+  const policy = 63 - Math.floor((encodedResult - 100) / 1000);
+
+  // Validate policy range
+  if (policy < 0 || policy > 63) {
+    return {
+      success: false,
+      error: {
+        type: 'decode_error',
+        reason: 'invalid_response',
+        message: `Invalid policy: ${policy} (must be 0-63)`,
+      },
+    };
+  }
+
+  // Convert policy (bit position) to array index
+  const index = 63 - policy;
+  const row = Math.floor(index / 8);
+  const col = index % 8;
 
   return {
     success: true,
@@ -149,14 +174,21 @@ export function freeMemory(
 }
 
 /**
- * Call WASM AI function
+ * Call WASM AI function (_ai_js)
  * @param module - WASM module instance
  * @param boardPointer - Pointer to board data in WASM memory
- * @returns Result with encoded position or error
+ * @param level - AI difficulty level (0-60)
+ * @param ai_player - AI player (0=black, 1=white)
+ * @returns Result with encoded result or error
+ *
+ * WASM function signature: _ai_js(boardPtr: number, level: number, ai_player: number): number
+ * Returns: 1000*(63-policy)+100+value
  */
 export function callAIFunction(
   module: EgaroucidWASMModule,
-  boardPointer: WASMPointer
+  boardPointer: WASMPointer,
+  level: number,
+  ai_player: number
 ): Result<number, WASMCallError> {
   if (boardPointer === 0) {
     return {
@@ -170,15 +202,12 @@ export function callAIFunction(
   }
 
   try {
-    // Call WASM function
-    // Note: Actual signature is _calc_value(a0, a1?, a2?, a3?)
-    // For now, we only pass the board pointer
-    // Additional parameters can be added when their purpose is determined
-    const encodedPosition = module._calc_value(boardPointer);
+    // Call _ai_js WASM function
+    const encodedResult = module._ai_js!(boardPointer, level, ai_player);
 
     return {
       success: true,
-      value: encodedPosition,
+      value: encodedResult,
     };
   } catch (error) {
     return {
