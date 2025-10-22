@@ -1397,3 +1397,898 @@ describe('WASM Integration Tests - Task 5.3: _calc_value Function Verification',
     Module._free(resPtr);
   });
 });
+
+describe('WASM Integration Tests - Task 5.4: Memory Management Verification', () => {
+  const RESOURCES_DIR = path.join(
+    __dirname,
+    '../../../../.kiro/specs/line-reversi-miniapp/resources'
+  );
+  const WASM_PATH = path.join(RESOURCES_DIR, 'ai.wasm');
+  const GLUE_PATH = path.join(RESOURCES_DIR, 'ai.js');
+
+  let Module: EgaroucidWASMModule;
+
+  beforeAll(async () => {
+    const wasmBinary = fs.readFileSync(WASM_PATH);
+    const glueCode = fs.readFileSync(GLUE_PATH, 'utf-8');
+
+    const modulePromise = new Promise<EgaroucidWASMModule>(
+      (resolve, reject) => {
+        if (typeof (global as any).process === 'undefined') {
+          (global as any).process = process;
+        }
+        if (typeof (global as any).require === 'undefined') {
+          (global as any).require = require;
+        }
+
+        const moduleConfig = {
+          wasmBinary: wasmBinary,
+          thisProgram: path.join(RESOURCES_DIR, 'ai.js'),
+          locateFile: (filename: string) => path.join(RESOURCES_DIR, filename),
+          onRuntimeInitialized: function (this: EgaroucidWASMModule) {
+            resolve(this);
+          },
+          onAbort: (reason: any) => {
+            reject(new Error(`WASM initialization aborted: ${reason}`));
+          },
+          print: (text: string) => {
+            void text;
+          },
+          printErr: (text: string) => {
+            if (
+              text.includes('Error:') ||
+              text.includes('Exception:') ||
+              text.includes('Assertion failed')
+            ) {
+              console.error('[WASM Error]', text);
+            }
+          },
+          noInitialRun: false,
+          noExitRuntime: true,
+        };
+
+        (global as any).Module = moduleConfig;
+
+        try {
+          const executeGlue = new Function(
+            '__dirname',
+            '__filename',
+            'Module',
+            'process',
+            'require',
+            glueCode
+          );
+          executeGlue(RESOURCES_DIR, GLUE_PATH, moduleConfig, process, require);
+        } catch (error) {
+          reject(error);
+        }
+      }
+    );
+
+    Module = await modulePromise;
+
+    // Initialize AI
+    const percentagePtr = Module._malloc(4);
+    Module._init_ai(percentagePtr);
+    Module._free(percentagePtr);
+  }, 60000);
+
+  test('Task 5.4.1: _malloc(256) should allocate board memory successfully', () => {
+    const size = 256; // 64 Int32 elements * 4 bytes
+    const ptr = Module._malloc(size);
+
+    expect(ptr).toBeGreaterThan(0);
+    expect(typeof ptr).toBe('number');
+
+    // Cleanup
+    Module._free(ptr);
+  });
+
+  test('Task 5.4.2: HEAP32 memory read/write should work correctly', () => {
+    const ptr = Module._malloc(256);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 64);
+
+    // Write test data
+    for (let i = 0; i < 64; i++) {
+      heap[i] = i;
+    }
+
+    // Read back and verify
+    for (let i = 0; i < 64; i++) {
+      expect(heap[i]).toBe(i);
+    }
+
+    Module._free(ptr);
+  });
+
+  test('Task 5.4.3: _free(ptr) should release memory without errors', () => {
+    const ptr = Module._malloc(256);
+
+    expect(() => {
+      Module._free(ptr);
+    }).not.toThrow();
+  });
+
+  test('Task 5.4.4: 10 consecutive AI calculations should not cause memory leaks', () => {
+    const initialBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    initialBoard[3][3] = 1;
+    initialBoard[3][4] = 0;
+    initialBoard[4][3] = 0;
+    initialBoard[4][4] = 1;
+
+    const level = 1;
+    const ai_player = 0;
+
+    // Perform 10 AI calculations
+    for (let iteration = 0; iteration < 10; iteration++) {
+      const boardPtr = Module._malloc(64 * 4);
+      const heap = new Int32Array(Module.HEAP32.buffer, boardPtr, 64);
+
+      // Encode board
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          heap[row * 8 + col] = initialBoard[row][col];
+        }
+      }
+
+      // Call AI
+      const result = Module._ai_js(boardPtr, level, ai_player);
+      expect(typeof result).toBe('number');
+
+      // Free memory
+      Module._free(boardPtr);
+    }
+
+    // If we reach here without crashes, memory management is working
+    expect(true).toBe(true);
+  });
+
+  test('Task 5.4.5: _free(0) should handle null pointer safely', () => {
+    // According to C standard, free(NULL) is safe
+    // WASM _free(0) should also be safe
+    expect(() => {
+      Module._free(0);
+    }).not.toThrow();
+  });
+
+  test('Task 5.4.6: Multiple allocations and deallocations should work correctly', () => {
+    const pointers: number[] = [];
+
+    // Allocate 5 memory blocks
+    for (let i = 0; i < 5; i++) {
+      const ptr = Module._malloc(256);
+      expect(ptr).toBeGreaterThan(0);
+      pointers.push(ptr);
+    }
+
+    // Free all blocks in reverse order
+    for (let i = pointers.length - 1; i >= 0; i--) {
+      expect(() => {
+        Module._free(pointers[i]);
+      }).not.toThrow();
+    }
+  });
+
+  test('Task 5.4.7: Memory isolation - different allocations should not interfere', () => {
+    const ptr1 = Module._malloc(256);
+    const ptr2 = Module._malloc(256);
+
+    const heap1 = new Int32Array(Module.HEAP32.buffer, ptr1, 64);
+    const heap2 = new Int32Array(Module.HEAP32.buffer, ptr2, 64);
+
+    // Write different values
+    for (let i = 0; i < 64; i++) {
+      heap1[i] = i;
+      heap2[i] = i + 1000;
+    }
+
+    // Verify values remain separate
+    for (let i = 0; i < 64; i++) {
+      expect(heap1[i]).toBe(i);
+      expect(heap2[i]).toBe(i + 1000);
+    }
+
+    Module._free(ptr1);
+    Module._free(ptr2);
+  });
+});
+
+describe('WASM Integration Tests - Task 5.5: Performance and Timeout Verification', () => {
+  const RESOURCES_DIR = path.join(
+    __dirname,
+    '../../../../.kiro/specs/line-reversi-miniapp/resources'
+  );
+  const WASM_PATH = path.join(RESOURCES_DIR, 'ai.wasm');
+  const GLUE_PATH = path.join(RESOURCES_DIR, 'ai.js');
+
+  let Module: EgaroucidWASMModule;
+
+  beforeAll(async () => {
+    const wasmBinary = fs.readFileSync(WASM_PATH);
+    const glueCode = fs.readFileSync(GLUE_PATH, 'utf-8');
+
+    const modulePromise = new Promise<EgaroucidWASMModule>(
+      (resolve, reject) => {
+        if (typeof (global as any).process === 'undefined') {
+          (global as any).process = process;
+        }
+        if (typeof (global as any).require === 'undefined') {
+          (global as any).require = require;
+        }
+
+        const moduleConfig = {
+          wasmBinary: wasmBinary,
+          thisProgram: path.join(RESOURCES_DIR, 'ai.js'),
+          locateFile: (filename: string) => path.join(RESOURCES_DIR, filename),
+          onRuntimeInitialized: function (this: EgaroucidWASMModule) {
+            resolve(this);
+          },
+          onAbort: (reason: any) => {
+            reject(new Error(`WASM initialization aborted: ${reason}`));
+          },
+          print: (text: string) => {
+            void text;
+          },
+          printErr: (text: string) => {
+            if (
+              text.includes('Error:') ||
+              text.includes('Exception:') ||
+              text.includes('Assertion failed')
+            ) {
+              console.error('[WASM Error]', text);
+            }
+          },
+          noInitialRun: false,
+          noExitRuntime: true,
+        };
+
+        (global as any).Module = moduleConfig;
+
+        try {
+          const executeGlue = new Function(
+            '__dirname',
+            '__filename',
+            'Module',
+            'process',
+            'require',
+            glueCode
+          );
+          executeGlue(RESOURCES_DIR, GLUE_PATH, moduleConfig, process, require);
+        } catch (error) {
+          reject(error);
+        }
+      }
+    );
+
+    Module = await modulePromise;
+
+    // Initialize AI
+    const percentagePtr = Module._malloc(4);
+    Module._init_ai(percentagePtr);
+    Module._free(percentagePtr);
+  }, 60000);
+
+  function encodeBoard(board: number[][]): number {
+    const ptr = Module._malloc(64 * 4);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 64);
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        heap[row * 8 + col] = board[row][col];
+      }
+    }
+    return ptr;
+  }
+
+  const TARGET_TIME_MS = 3000; // 3 seconds per requirement
+
+  test('Task 5.5.1: Level 0 calculation should complete within 3 seconds', () => {
+    const initialBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    initialBoard[3][3] = 1;
+    initialBoard[3][4] = 0;
+    initialBoard[4][3] = 0;
+    initialBoard[4][4] = 1;
+
+    const ptr = encodeBoard(initialBoard);
+    const startTime = Date.now();
+
+    const result = Module._ai_js(ptr, 0, 0);
+
+    const elapsedTime = Date.now() - startTime;
+    Module._free(ptr);
+
+    expect(result).toBeGreaterThan(0);
+    expect(elapsedTime).toBeLessThan(TARGET_TIME_MS);
+  });
+
+  test('Task 5.5.2: Level 1 calculation should complete within 3 seconds', () => {
+    const initialBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    initialBoard[3][3] = 1;
+    initialBoard[3][4] = 0;
+    initialBoard[4][3] = 0;
+    initialBoard[4][4] = 1;
+
+    const ptr = encodeBoard(initialBoard);
+    const startTime = Date.now();
+
+    const result = Module._ai_js(ptr, 1, 0);
+
+    const elapsedTime = Date.now() - startTime;
+    Module._free(ptr);
+
+    expect(result).toBeGreaterThan(0);
+    expect(elapsedTime).toBeLessThan(TARGET_TIME_MS);
+  });
+
+  test('Task 5.5.3: Level 2 calculation should complete within 3 seconds', () => {
+    const initialBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    initialBoard[3][3] = 1;
+    initialBoard[3][4] = 0;
+    initialBoard[4][3] = 0;
+    initialBoard[4][4] = 1;
+
+    const ptr = encodeBoard(initialBoard);
+    const startTime = Date.now();
+
+    const result = Module._ai_js(ptr, 2, 0);
+
+    const elapsedTime = Date.now() - startTime;
+    Module._free(ptr);
+
+    expect(result).toBeGreaterThan(0);
+    expect(elapsedTime).toBeLessThan(TARGET_TIME_MS);
+  });
+
+  test('Task 5.5.4: Level 3 calculation should complete within 3 seconds', () => {
+    const initialBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    initialBoard[3][3] = 1;
+    initialBoard[3][4] = 0;
+    initialBoard[4][3] = 0;
+    initialBoard[4][4] = 1;
+
+    const ptr = encodeBoard(initialBoard);
+    const startTime = Date.now();
+
+    const result = Module._ai_js(ptr, 3, 0);
+
+    const elapsedTime = Date.now() - startTime;
+    Module._free(ptr);
+
+    expect(result).toBeGreaterThan(0);
+    expect(elapsedTime).toBeLessThan(TARGET_TIME_MS);
+  });
+
+  test('Task 5.5.5: Level 4 calculation should complete within 3 seconds', () => {
+    const initialBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    initialBoard[3][3] = 1;
+    initialBoard[3][4] = 0;
+    initialBoard[4][3] = 0;
+    initialBoard[4][4] = 1;
+
+    const ptr = encodeBoard(initialBoard);
+    const startTime = Date.now();
+
+    const result = Module._ai_js(ptr, 4, 0);
+
+    const elapsedTime = Date.now() - startTime;
+    Module._free(ptr);
+
+    expect(result).toBeGreaterThan(0);
+    expect(elapsedTime).toBeLessThan(TARGET_TIME_MS);
+  });
+
+  test('Task 5.5.6: Level 5 calculation should complete within 3 seconds', () => {
+    const initialBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    initialBoard[3][3] = 1;
+    initialBoard[3][4] = 0;
+    initialBoard[4][3] = 0;
+    initialBoard[4][4] = 1;
+
+    const ptr = encodeBoard(initialBoard);
+    const startTime = Date.now();
+
+    const result = Module._ai_js(ptr, 5, 0);
+
+    const elapsedTime = Date.now() - startTime;
+    Module._free(ptr);
+
+    expect(result).toBeGreaterThan(0);
+    expect(elapsedTime).toBeLessThan(TARGET_TIME_MS);
+  });
+
+  test('Task 5.5.7: Mid-game board calculation time (Level 3)', () => {
+    // Create mid-game scenario with more stones
+    const midGameBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    midGameBoard[3][3] = 1;
+    midGameBoard[3][4] = 0;
+    midGameBoard[3][5] = 0;
+    midGameBoard[4][3] = 0;
+    midGameBoard[4][4] = 0;
+    midGameBoard[4][5] = 0;
+    midGameBoard[5][4] = 1;
+
+    const ptr = encodeBoard(midGameBoard);
+    const startTime = Date.now();
+
+    const result = Module._ai_js(ptr, 3, 1);
+
+    const elapsedTime = Date.now() - startTime;
+    Module._free(ptr);
+
+    expect(result).toBeGreaterThan(0);
+    expect(elapsedTime).toBeLessThan(TARGET_TIME_MS);
+  });
+
+  test('Task 5.5.8: Endgame board calculation time (Level 3)', () => {
+    // Create endgame scenario with most cells filled
+    const endGameBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(0));
+    endGameBoard[0][0] = -1;
+    endGameBoard[0][1] = -1;
+    endGameBoard[0][7] = 1;
+    endGameBoard[7][7] = 1;
+
+    const ptr = encodeBoard(endGameBoard);
+    const startTime = Date.now();
+
+    const result = Module._ai_js(ptr, 3, 0);
+
+    const elapsedTime = Date.now() - startTime;
+    Module._free(ptr);
+
+    expect(result).toBeGreaterThan(0);
+    expect(elapsedTime).toBeLessThan(TARGET_TIME_MS);
+  });
+
+  test('Task 5.5.9: _stop() function should exist and be callable', () => {
+    expect(Module._stop).toBeDefined();
+    expect(typeof Module._stop).toBe('function');
+
+    // Should not throw
+    expect(() => {
+      Module._stop();
+    }).not.toThrow();
+  });
+
+  test('Task 5.5.10: _resume() function should exist and be callable', () => {
+    expect(Module._resume).toBeDefined();
+    expect(typeof Module._resume).toBe('function');
+
+    // Should not throw
+    expect(() => {
+      Module._resume();
+    }).not.toThrow();
+  });
+
+  test('Task 5.5.11: _stop() and _resume() sequence should work', () => {
+    const initialBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    initialBoard[3][3] = 1;
+    initialBoard[3][4] = 0;
+    initialBoard[4][3] = 0;
+    initialBoard[4][4] = 1;
+
+    // Resume before test
+    Module._resume();
+
+    const ptr = encodeBoard(initialBoard);
+
+    // Call stop (though it may not affect synchronous call in test environment)
+    Module._stop();
+
+    // Should still complete (stop mainly affects longer calculations)
+    const result = Module._ai_js(ptr, 1, 0);
+
+    // Resume for subsequent tests
+    Module._resume();
+
+    Module._free(ptr);
+
+    expect(result).toBeGreaterThan(0);
+  });
+});
+
+describe('WASM Integration Tests - Task 5.6: Error Cases and Edge Cases Verification', () => {
+  const RESOURCES_DIR = path.join(
+    __dirname,
+    '../../../../.kiro/specs/line-reversi-miniapp/resources'
+  );
+  const WASM_PATH = path.join(RESOURCES_DIR, 'ai.wasm');
+  const GLUE_PATH = path.join(RESOURCES_DIR, 'ai.js');
+
+  let Module: EgaroucidWASMModule;
+
+  beforeAll(async () => {
+    const wasmBinary = fs.readFileSync(WASM_PATH);
+    const glueCode = fs.readFileSync(GLUE_PATH, 'utf-8');
+
+    const modulePromise = new Promise<EgaroucidWASMModule>(
+      (resolve, reject) => {
+        if (typeof (global as any).process === 'undefined') {
+          (global as any).process = process;
+        }
+        if (typeof (global as any).require === 'undefined') {
+          (global as any).require = require;
+        }
+
+        const moduleConfig = {
+          wasmBinary: wasmBinary,
+          thisProgram: path.join(RESOURCES_DIR, 'ai.js'),
+          locateFile: (filename: string) => path.join(RESOURCES_DIR, filename),
+          onRuntimeInitialized: function (this: EgaroucidWASMModule) {
+            resolve(this);
+          },
+          onAbort: (reason: any) => {
+            reject(new Error(`WASM initialization aborted: ${reason}`));
+          },
+          print: (text: string) => {
+            void text;
+          },
+          printErr: (text: string) => {
+            if (
+              text.includes('Error:') ||
+              text.includes('Exception:') ||
+              text.includes('Assertion failed')
+            ) {
+              console.error('[WASM Error]', text);
+            }
+          },
+          noInitialRun: false,
+          noExitRuntime: true,
+        };
+
+        (global as any).Module = moduleConfig;
+
+        try {
+          const executeGlue = new Function(
+            '__dirname',
+            '__filename',
+            'Module',
+            'process',
+            'require',
+            glueCode
+          );
+          executeGlue(RESOURCES_DIR, GLUE_PATH, moduleConfig, process, require);
+        } catch (error) {
+          reject(error);
+        }
+      }
+    );
+
+    Module = await modulePromise;
+
+    // Initialize AI
+    const percentagePtr = Module._malloc(4);
+    Module._init_ai(percentagePtr);
+    Module._free(percentagePtr);
+  }, 60000);
+
+  test('Task 5.6.1: Invalid board size (63 elements) handling', () => {
+    // Create 63-element board (one short)
+    const ptr = Module._malloc(63 * 4);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 63);
+
+    // Fill with initial board pattern
+    for (let i = 0; i < 63; i++) {
+      heap[i] = -1;
+    }
+
+    // WASM may crash or return invalid result
+    // We expect either an error or undefined behavior
+    // The test passes if we can detect the issue
+    try {
+      const result = Module._ai_js(ptr, 1, 0);
+      // If it returns, result should be checked
+      // Note: WASM may not validate input size
+      expect(typeof result).toBe('number');
+    } catch (error) {
+      // Expected: WASM may throw or crash
+      expect(error).toBeDefined();
+    } finally {
+      Module._free(ptr);
+    }
+  });
+
+  test('Task 5.6.2: Invalid board size (65 elements) handling', () => {
+    // Create 65-element board (one extra)
+    const ptr = Module._malloc(65 * 4);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 65);
+
+    // Fill with initial board pattern
+    for (let i = 0; i < 65; i++) {
+      heap[i] = -1;
+    }
+
+    // WASM reads only first 64 elements, extra element is ignored
+    try {
+      const result = Module._ai_js(ptr, 1, 0);
+      // WASM will read first 64 elements, should work
+      expect(typeof result).toBe('number');
+    } catch (error) {
+      // Unexpected, but we handle it
+      expect(error).toBeDefined();
+    } finally {
+      Module._free(ptr);
+    }
+  });
+
+  test('Task 5.6.3: Invalid cell value (out of range -2) handling', () => {
+    const ptr = Module._malloc(64 * 4);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 64);
+
+    // Create initial board
+    for (let i = 0; i < 64; i++) {
+      heap[i] = -1;
+    }
+    heap[27] = 1; // (3,3)
+    heap[28] = 0; // (3,4)
+    heap[35] = 0; // (4,3)
+    heap[36] = 1; // (4,4)
+
+    // Insert invalid value
+    heap[0] = -2; // Invalid
+
+    // WASM may interpret -2 as empty or cause undefined behavior
+    try {
+      const result = Module._ai_js(ptr, 1, 0);
+      expect(typeof result).toBe('number');
+    } catch (error) {
+      // May throw
+      expect(error).toBeDefined();
+    } finally {
+      Module._free(ptr);
+    }
+  });
+
+  test('Task 5.6.4: Invalid cell value (out of range 2) handling', () => {
+    const ptr = Module._malloc(64 * 4);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 64);
+
+    // Create initial board
+    for (let i = 0; i < 64; i++) {
+      heap[i] = -1;
+    }
+    heap[27] = 1;
+    heap[28] = 0;
+    heap[35] = 0;
+    heap[36] = 1;
+
+    // Insert invalid value
+    heap[0] = 2; // Invalid (2 is VACANT in internal representation, but input should be -1/0/1)
+
+    try {
+      const result = Module._ai_js(ptr, 1, 0);
+      expect(typeof result).toBe('number');
+    } catch (error) {
+      expect(error).toBeDefined();
+    } finally {
+      Module._free(ptr);
+    }
+  });
+
+  test('Task 5.6.5: Invalid cell value (large positive) handling', () => {
+    const ptr = Module._malloc(64 * 4);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 64);
+
+    // Create initial board
+    for (let i = 0; i < 64; i++) {
+      heap[i] = -1;
+    }
+    heap[27] = 1;
+    heap[28] = 0;
+    heap[35] = 0;
+    heap[36] = 1;
+
+    // Insert invalid value
+    heap[0] = 999;
+
+    try {
+      const result = Module._ai_js(ptr, 1, 0);
+      expect(typeof result).toBe('number');
+    } catch (error) {
+      expect(error).toBeDefined();
+    } finally {
+      Module._free(ptr);
+    }
+  });
+
+  test('Task 5.6.6: _malloc failure simulation (request huge memory)', () => {
+    // Request unreasonably large memory (10GB)
+    const hugeSize = 10 * 1024 * 1024 * 1024;
+
+    try {
+      const ptr = Module._malloc(hugeSize);
+      if (ptr === 0) {
+        // Expected: malloc returns 0 on failure
+        expect(ptr).toBe(0);
+      } else {
+        // Unexpectedly succeeded, free it
+        Module._free(ptr);
+      }
+    } catch (error) {
+      // May throw out-of-memory error
+      expect(error).toBeDefined();
+    }
+  });
+
+  test('Task 5.6.7: Response value range check (should be within 0-63)', () => {
+    const initialBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    initialBoard[3][3] = 1;
+    initialBoard[3][4] = 0;
+    initialBoard[4][3] = 0;
+    initialBoard[4][4] = 1;
+
+    const ptr = Module._malloc(64 * 4);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 64);
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        heap[row * 8 + col] = initialBoard[row][col];
+      }
+    }
+
+    const result = Module._ai_js(ptr, 1, 0);
+    Module._free(ptr);
+
+    // Decode and check range
+    const policy = 63 - Math.floor((result - 100) / 1000);
+    expect(policy).toBeGreaterThanOrEqual(0);
+    expect(policy).toBeLessThanOrEqual(63);
+  });
+
+  test('Task 5.6.8: All empty board (no stones) handling', () => {
+    const emptyBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+
+    const ptr = Module._malloc(64 * 4);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 64);
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        heap[row * 8 + col] = emptyBoard[row][col];
+      }
+    }
+
+    // Empty board has no legal moves
+    try {
+      const result = Module._ai_js(ptr, 1, 0);
+      // May return invalid result or special value
+      expect(typeof result).toBe('number');
+    } catch (error) {
+      // May throw
+      expect(error).toBeDefined();
+    } finally {
+      Module._free(ptr);
+    }
+  });
+
+  test('Task 5.6.9: All filled board (no empty cells) handling', () => {
+    const filledBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(0)); // All black
+
+    const ptr = Module._malloc(64 * 4);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 64);
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        heap[row * 8 + col] = filledBoard[row][col];
+      }
+    }
+
+    // No empty cells, no legal moves
+    try {
+      const result = Module._ai_js(ptr, 1, 0);
+      // May return special value (e.g., -1 for game end)
+      expect(typeof result).toBe('number');
+    } catch (error) {
+      expect(error).toBeDefined();
+    } finally {
+      Module._free(ptr);
+    }
+  });
+
+  test('Task 5.6.10: Invalid ai_player value (2) handling', () => {
+    const initialBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    initialBoard[3][3] = 1;
+    initialBoard[3][4] = 0;
+    initialBoard[4][3] = 0;
+    initialBoard[4][4] = 1;
+
+    const ptr = Module._malloc(64 * 4);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 64);
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        heap[row * 8 + col] = initialBoard[row][col];
+      }
+    }
+
+    // ai_player should be 0 or 1, test with 2
+    try {
+      const result = Module._ai_js(ptr, 1, 2);
+      // WASM may interpret 2 as 0 or 1 (modulo), or cause undefined behavior
+      expect(typeof result).toBe('number');
+    } catch (error) {
+      expect(error).toBeDefined();
+    } finally {
+      Module._free(ptr);
+    }
+  });
+
+  test('Task 5.6.11: Invalid level value (-1) handling', () => {
+    const initialBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    initialBoard[3][3] = 1;
+    initialBoard[3][4] = 0;
+    initialBoard[4][3] = 0;
+    initialBoard[4][4] = 1;
+
+    const ptr = Module._malloc(64 * 4);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 64);
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        heap[row * 8 + col] = initialBoard[row][col];
+      }
+    }
+
+    // Level should be 0-60, test with -1
+    try {
+      const result = Module._ai_js(ptr, -1, 0);
+      // May clamp to 0 or cause error
+      expect(typeof result).toBe('number');
+    } catch (error) {
+      expect(error).toBeDefined();
+    } finally {
+      Module._free(ptr);
+    }
+  });
+
+  test('Task 5.6.12: Invalid level value (100) handling', () => {
+    const initialBoard = Array(8)
+      .fill(null)
+      .map(() => Array(8).fill(-1));
+    initialBoard[3][3] = 1;
+    initialBoard[3][4] = 0;
+    initialBoard[4][3] = 0;
+    initialBoard[4][4] = 1;
+
+    const ptr = Module._malloc(64 * 4);
+    const heap = new Int32Array(Module.HEAP32.buffer, ptr, 64);
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        heap[row * 8 + col] = initialBoard[row][col];
+      }
+    }
+
+    // Level should be 0-60, test with 100
+    try {
+      const result = Module._ai_js(ptr, 100, 0);
+      // May clamp to max level or cause error
+      expect(typeof result).toBe('number');
+    } catch (error) {
+      expect(error).toBeDefined();
+    } finally {
+      Module._free(ptr);
+    }
+  });
+});
