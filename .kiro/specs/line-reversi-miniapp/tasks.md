@@ -81,6 +81,7 @@
   - メインスレッドと Worker 間のメッセージング (AIWorkerRequest/Response) を実装
   - 3秒タイムアウトを設定し、超過時はランダムな有効手にフォールバックする処理を実装
   - Worker 内で WASM モジュールを再利用し、パフォーマンスを最適化
+  - WASMBridgeの最新API (\_ai_js with level and ai_player parameters) を正しく使用
   - _Requirements: 3.5, 8.2, 8.3_
 
 - [x] 3.5 AIEngine サービスの高レベル API 実装
