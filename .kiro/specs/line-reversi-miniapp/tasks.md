@@ -134,129 +134,188 @@
   - 結果画面のアニメーション演出を実装
   - _Requirements: 2.5, 2.6, 6.6, 6.7_
 
-## 5. LINE ミニアプリ統合
+## 5. WASM インテグレーションテスト
 
-- [ ] 5.1 LIFF SDK の統合と初期化
+- [x] 5.1 Jest環境構成とWASMモジュールロード
+  - Node.js環境でのJest設定 (@jest-environment node)
+  - .kiro/specs/line-reversi-miniapp/resources/ai.js と ai.wasm を使用
+  - EmscriptenモジュールのロードとonRuntimeInitialized待機
+  - エクスポート関数の存在確認 (\_init_ai, \_ai_js, \_calc_value, \_stop, \_resume, \_malloc, \_free)
+  - _Requirements: 3.1, 4.1_
+
+- [x] 5.2 ボードエンコーディングと \_ai_js 関数の実動作検証
+  - Int32Array (64要素、256 bytes) による実際のボードエンコード実装
+  - セル値マッピング: -1 = empty, 0 = black, 1 = white
+  - 実際の ai.wasm を使用した \_ai_js(boardPtr, level, ai_player) の呼び出し
+  - 返り値のビット位置デコード: cell_index = 63 - return_value
+  - 初期配置、中盤、終盤の各ボード状態でのテスト
+  - _Requirements: 4.2, 4.3, 4.4_
+
+- [ ] 5.3 \_calc_value 関数による評価値計算の検証
+  - \_calc_value(boardPtr, resPtr, level, ai_player) の実動作テスト
+  - 返り値配列 (74要素) の検証: res[10-73] = ビット位置 63-0 の評価値
+  - Level 0 のランダム性検証（複数回実行で異なる結果）
+  - 非合法手の -1 判定確認
+  - 評価値の正負による有利/不利の判定確認
+  - _Requirements: 3.2, 3.3, 3.4_
+
+- [ ] 5.4 メモリ管理の完全検証
+  - \_malloc(256) によるボード用メモリ確保テスト
+  - Module.HEAP32 を介したメモリ読み書き検証
+  - \_free(ptr) による適切なメモリ解放テスト
+  - 連続10回の AI 計算でメモリリークがないことを確認
+  - 不正なポインタ (0) に対する \_free の安全性確認
+  - _Requirements: 4.5, 8.2, 8.3_
+
+- [ ] 5.5 パフォーマンスとタイムアウトの検証
+  - Level 0-5 での計算時間測定 (目標: 各3秒以内)
+  - 初期ボード、中盤、終盤の各状態での計算時間計測
+  - \_stop() と \_resume() の動作確認
+  - 統合テストファイルとして wasm.integration.test.ts を作成
+  - _Requirements: 3.5, 8.2, 8.3_
+
+- [ ] 5.6 エラーケースとエッジケースの検証
+  - 不正なボードサイズ (63要素、65要素) に対するエラーハンドリング
+  - 不正なセル値 (範囲外の整数) に対する挙動確認
+  - \_malloc 失敗時 (return 0) のハンドリング
+  - 返り値の範囲外チェック (< 0 or >= 64)
+  - 初期化前の関数呼び出しに対するエラー処理
+  - _Requirements: 4.5, 9.1, 9.3_
+
+## 6. LINE ミニアプリ統合
+
+- [ ] 6.1 LIFF SDK の統合と初期化
   - LIFF SDK 2.x を npm または CDN 経由でインストール
   - LIFF 初期化処理 (liff.init) を GameBoard 起動時に実行
   - 初期化成功/失敗のハンドリングを実装
   - 非 LINE ブラウザでのフォールバック処理を実装
   - _Requirements: 7.1, 7.2, 9.2_
 
-- [ ] 5.2 ユーザ認証とプロフィール取得
+- [ ] 6.2 ユーザ認証とプロフィール取得
   - liff.isLoggedIn() でログイン状態を確認
   - 未ログイン時に liff.login() を呼び出す処理を実装
   - liff.getProfile() でユーザプロフィール (表示名、プロフィール画像) を取得
   - ユーザ情報をゲーム画面に表示する UI を実装
   - _Requirements: 7.4_
 
-- [ ] 5.3 LINE プラットフォームガイドライン対応
+- [ ] 6.3 LINE プラットフォームガイドライン対応
   - LINE アプリ UI と調和するデザインを適用
   - LIFF 環境 (LINEアプリ内 vs 外部ブラウザ) を検出し、適切に対応
   - LINE のカラースキームとフォントを考慮した UI を実装
   - LINE ミニアプリのガイドラインに準拠したナビゲーションを実装
   - _Requirements: 7.2, 7.3_
 
-## 6. エラーハンドリングとフォールバック
+## 7. エラーハンドリングとフォールバック
 
-- [ ] 6.1 Error Boundary の実装
+- [ ] 7.1 Error Boundary の実装
   - React Error Boundary コンポーネントを実装
   - 予期しないエラーをキャッチし、ユーザフレンドリーなエラー画面を表示
   - エラーログをコンソールに出力 (ErrorLog 型でフォーマット)
   - リトライボタンとリロードボタンを配置
   - _Requirements: 9.2, 9.4, 9.5_
 
-- [ ] 6.2 WASM 関連のエラーハンドリング
+- [ ] 7.2 WASM 関連のエラーハンドリング
   - WASM ロード失敗時のエラーメッセージとリロードボタンを表示
   - WASM 初期化失敗時の適切なフォールバック処理を実装
   - AI 計算タイムアウト時にランダム有効手を選択する処理を実装
   - WASM メモリアロケーション失敗時のエラーハンドリングを実装
   - _Requirements: 4.5, 9.1, 9.3_
 
-- [ ] 6.3 ユーザ入力とビジネスロジックのエラーハンドリング
+- [ ] 7.3 ユーザ入力とビジネスロジックのエラーハンドリング
   - 無効な手をタップした際の視覚的フィードバック (赤ハイライト、メッセージ) を実装
   - 有効手がない場合のターン自動スキップ処理を実装
   - ゲーム状態の不整合を検出し、ゲームリセットを提案する処理を実装
   - 全エラーを Result 型で返し、一貫したエラーハンドリングを実現
   - _Requirements: 2.2, 2.4, 9.2, 9.4_
 
-## 7. パフォーマンス最適化
+## 8. パフォーマンス最適化
 
-- [ ] 7.1 React パフォーマンスの最適化
+- [ ] 8.1 React パフォーマンスの最適化
   - useMemo で有効手計算結果をメモ化
   - useCallback でコールバック関数を安定化し、不要な再レンダリングを防止
   - React.memo で BoardRenderer を最適化
   - React Profiler で再レンダリングのボトルネックを特定し改善
   - _Requirements: 8.2, 8.5_
 
-- [ ] 7.2 バンドルサイズとコード分割の最適化
+- [ ] 8.2 バンドルサイズとコード分割の最適化
   - Next.js の自動コード分割を活用し、Client Component を分離
   - WASM ファイルを遅延ロードし、初回表示速度を向上
   - Tailwind CSS の Purge を有効化し、未使用 CSS を削除
   - Next.js Build Analyzer でバンドルサイズを確認し、500KB (gzip) 以下に抑制
   - _Requirements: 8.1_
 
-- [ ] 7.3 静的サイト生成とキャッシュ戦略
+- [ ] 8.3 静的サイト生成とキャッシュ戦略
   - SSG による静的 HTML 生成を確認し、ビルド最適化を実施
   - Cache-Control ヘッダーを設定し、静的アセットのキャッシュを有効化
   - WASM ファイルのキャッシュ戦略を構成
   - CDN 配信を想定した最適化を実施
   - _Requirements: 1.4, 8.1_
 
-## 8. テストの実装
+## 9. テストの実装
 
-- [ ] 8.1 ユニットテストの作成
+- [ ] 9.1 ユニットテストの作成
   - GameLogic の全関数 (validateMove, applyMove, calculateValidMoves, checkGameEnd) をテスト
   - MoveValidator の findAllFlips を複雑な反転パターンでテスト
   - 境界条件とエッジケースを網羅的にテスト
   - カバレッジ 90% 以上を達成
   - _Requirements: All requirements (ゲームロジックの正確性保証)_
 
-- [ ] 8.2 統合テストの作成
+- [ ] 9.2 統合テストの作成
   - GameBoard + GameLogic 統合テスト (ユーザ操作からUI更新までのフロー)
   - AIEngine + WASMBridge 統合テスト (WASM 初期化から AI 計算までのフロー)
   - Error Boundary 統合テスト (エラー発生時の UI 表示)
   - LIFF 初期化のモックテスト (MSW を使用)
   - _Requirements: 3.1, 3.2, 4.1, 7.1, 9.1_
 
-- [ ] 8.3 E2E テストの作成
+- [ ] 9.3 E2E テストの作成
   - ゲーム起動から終了までの完全プレイフローをテスト
   - 有効手ハイライト表示とターンスキップフローをテスト
   - WASM 初期化失敗シナリオをテスト
   - 各種スマートフォン画面サイズでのレスポンシブデザインをテスト
   - _Requirements: 1.1, 2.1, 3.1, 6.1, 8.4_
 
-- [ ] 8.4 パフォーマンステストの実施
+- [ ] 9.4 AI 対戦の E2E テスト
+  - Playwright のセットアップと e2e テストディレクトリ構成
+  - ゲーム起動から AI 対戦完了までの完全フローをテスト
+  - AI 計算中の UI 応答性とローディングインジケーター表示を検証
+  - 連続プレイでのメモリリーク検証 (10ゲーム連続)
+  - WASM エラーケース (ロード失敗、タイムアウト) のハンドリングをテスト
+  - クロスブラウザテスト (Chrome, Firefox, Safari) の実施
+  - CI/CD パイプラインでのヘッドレスブラウザ自動実行設定
+  - package.json への Playwright テスト実行スクリプト追加
+  - _Requirements: 3.1, 3.4, 3.5, 4.1, 8.3, 8.4_
+
+- [ ] 9.5 パフォーマンステストの実施
   - Lighthouse で FCP (< 2秒)、TTI (< 3秒) を測定
   - Chrome DevTools で UI 応答速度 (< 100ms) を測定
   - AI 計算速度 (< 3秒) を様々なボード状態でテスト
   - 長時間プレイ後のメモリリーク検証 (10ゲーム連続)
   - _Requirements: 8.1, 8.2, 8.3, 8.5_
 
-## 9. セキュリティとデプロイ準備
+## 10. セキュリティとデプロイ準備
 
-- [ ] 9.1 Content Security Policy の設定
+- [ ] 10.1 Content Security Policy の設定
   - Next.js の CSP ヘッダーを設定 (script-src, style-src, connect-src)
   - LIFF SDK とWASM 実行に必要な許可を追加
   - frame-ancestors を設定し、LIFF 環境での動作を保証
   - CSP 設定をテスト環境で検証
   - _Requirements: 7.1, 7.2_
 
-- [ ] 9.2 WASM ファイルの整合性検証
+- [ ] 10.2 WASM ファイルの整合性検証
   - Subresource Integrity (SRI) ハッシュを生成し、ai.wasm の改ざん検証を実装
   - ハッシュ検証失敗時のエラーハンドリングを実装
   - HTTPS 経由での WASM 配信を確認
   - WASM ファイルの署名検証を検討
   - _Requirements: 4.1, 9.1_
 
-- [ ] 9.3 本番環境向けビルドと最適化
+- [ ] 10.3 本番環境向けビルドと最適化
   - Next.js の本番ビルド (next build) を実行し、静的エクスポートを生成
   - 環境変数 (LIFF ID) を本番環境用に設定
   - Source Map の有効化/無効化を判断
   - ビルド成果物のサイズとパフォーマンスを最終確認
   - _Requirements: 8.1, 8.2_
 
-- [ ] 9.4 デプロイメント検証とドキュメント作成
+- [ ] 10.4 デプロイメント検証とドキュメント作成
   - CDN 配信を想定した静的ファイルの検証
   - LIFF アプリとして LINE Developers Console に登録
   - デプロイ手順書を作成 (ビルド、環境変数、CDN 設定)
