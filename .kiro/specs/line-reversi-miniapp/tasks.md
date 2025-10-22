@@ -63,15 +63,15 @@
   - _Requirements: 4.1, 4.5, 9.1_
 
 - [x] 3.2 ボード状態のエンコーディングとデコーディング
-  - JavaScript の Board 状態を 64 bytes の Uint8Array にエンコードする関数を実装
-  - セル値 (0=空, 1=黒, 2=白) のマッピングを正確に実装
-  - WASM メモリへの書き込み処理 (\_malloc、HEAP8) を実装
-  - WASM 応答 (0-63 の整数) を Position 型にデコードする関数を実装
+  - JavaScript の Board 状態を 256 bytes の Int32Array にエンコードする関数を実装
+  - セル値 (-1=空, 0=黒, 1=白) のマッピングを正確に実装
+  - WASM メモリへの書き込み処理 (\_malloc(256), HEAP32) を実装
+  - WASM 応答 (1000\*(63-policy)+100+value 形式) を Position 型にデコードする関数を実装
   - _Requirements: 4.2, 4.3, 4.4_
 
 - [x] 3.3 WASM 関数呼び出しとエラーハンドリング
-  - \_calc_value() を呼び出し、最善手を計算する関数を実装
-  - 関数シグネチャ (\_calc_value(a0, a1?, a2?, a3?)) を検証し、必要なパラメータを特定
+  - \_ai_js(boardPtr, level, ai_player) を呼び出し、最善手を計算する関数を実装
+  - 返り値 (1000\*(63-policy)+100+value) を正しくデコードする処理を実装
   - 無効な応答 (範囲外の値) を検出するバリデーションを実装
   - メモリリークを防止するため、計算後に \_free() を確実に呼び出す処理を実装
   - _Requirements: 3.2, 3.3, 3.4, 4.4, 4.5_
@@ -147,7 +147,7 @@
   - Int32Array (64要素、256 bytes) による実際のボードエンコード実装
   - セル値マッピング: -1 = empty, 0 = black, 1 = white
   - 実際の ai.wasm を使用した \_ai_js(boardPtr, level, ai_player) の呼び出し
-  - 返り値のビット位置デコード: cell_index = 63 - return_value
+  - 返り値のデコード: policy = 63 - Math.floor((result - 100) / 1000), index = 63 - policy
   - 初期配置、中盤、終盤の各ボード状態でのテスト
   - _Requirements: 4.2, 4.3, 4.4_
 
