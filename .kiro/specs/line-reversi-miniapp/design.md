@@ -737,12 +737,31 @@ type Direction =
 **統合の概要**:
 
 - **WASM Binary**: `ai.wasm` (~1.4 MB、Emscripten 3.1.20でコンパイルされたC++ Reversi Engine)
-- **JavaScript Loader**: `ai.js` (Emscriptenランタイム + グルーコード)
+- **Emscripten Glue Code**: `ai.js` (~94 KB、Emscriptenランタイム + グルーコード)
+  - **必須**: `ai.wasm`単体では動作せず、`ai.js`を経由してロードする必要がある
+  - **理由**: EmscriptenはWASMインポートオブジェクト（メモリ管理、システムコールなど）を提供
+  - **ロード方法**: `import()`または動的スクリプトロードで`ai.js`をロードし、Moduleオブジェクトを取得
 - **主要エクスポート**: `_init_ai()`, `_calc_value()`, `_ai_js()`, `_stop()`, `_resume()`, `_malloc()`, `_free()`
 - **ボードエンコーディング**: Int32Array (64要素、256 bytes)、セル値: -1=empty, 0=black, 1=white
 - **座標系**: ビット位置 = `63 - (row * 8 + col)` (座標系変換に注意)
 - **Level System**: 61レベル (0-60)、Level 0はランダム（非決定的）
 - **実行モデル**: 同期ブロッキング → Web Worker必須、3秒タイムアウト推奨
+
+**Emscripten統合の重要性**:
+
+Emscripten WASMは通常のWASMと異なり、以下の依存関係があります:
+
+1. **インポートオブジェクト**: メモリ管理、環境変数、システムコールのエミュレーション
+2. **ランタイム初期化**: `onRuntimeInitialized`コールバックで初期化完了を待機
+3. **HEAP管理**: `HEAP8`, `HEAP32`などのTypedArrayビューを提供
+
+直接`WebAssembly.instantiate()`を使用すると、以下のエラーが発生します:
+
+```text
+WebAssembly.instantiate(): Import #0 "a": module is not an object or function
+```
+
+正しいロード方法はTask 6で実装されます。
 
 詳細な実装ガイド、エラーハンドリング戦略、パフォーマンス考慮事項については上記のドキュメントを参照してください。
 
