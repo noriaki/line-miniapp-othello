@@ -42,6 +42,74 @@
 | `stop`       | `void stop()`                                                         | 探索停止     | `Egaroucid_for_Web.cpp:124-126` |
 | `resume`     | `void resume()`                                                       | 探索再開     | `Egaroucid_for_Web.cpp:128-130` |
 
+##### init_ai の詳細
+
+**発見箇所**: `Egaroucid_for_Web.cpp:15-27`、`Egaroucid_for_Web.cpp:70-75`
+
+```cpp
+inline void init(int *percentage) {
+    *percentage = 1;
+    board_init();          // ボード関連の初期化
+    mobility_init();       // 着手可能位置計算の初期化
+    stability_init();      // 確定石計算の初期化
+    parent_transpose_table.first_init();  // 置換表の初期化
+    child_transpose_table.first_init();
+    *percentage = 80;
+    std::cerr << "eval init" << std::endl;
+    evaluate_init();       // 評価関数の初期化（最も時間がかかる）
+    book_init();           // 定石データベースの初期化
+    *percentage = 100;
+}
+
+extern "C" int init_ai(int *percentage) {
+    cout << "initializing AI" << endl;
+    init(percentage);
+    cout << "AI iniitialized" << endl;
+    return 0;
+}
+```
+
+**初期化プロセス**:
+
+1. `*percentage = 1`: 初期化開始
+2. ボード、着手生成、確定石、置換表の初期化
+3. `*percentage = 80`: 主要な初期化完了
+4. 評価関数と定石データベースの初期化（最も時間がかかる）
+5. `*percentage = 100`: 初期化完了
+
+**JavaScript での使用**:
+
+```javascript
+const percentagePtr = module._malloc(4); // Int32
+module._init_ai(percentagePtr);
+// percentagePtrの値を定期的にチェックして進捗表示可能
+module._free(percentagePtr);
+```
+
+##### Search_result構造体の完全な定義
+
+**発見箇所**: `search.hpp:67-76`
+
+```cpp
+struct Search_result{
+    int_fast8_t policy;   // 選択された手（0-63のビット位置、-1=ゲーム終了）
+    int value;            // 評価値（石差ベース）
+    int depth;            // 実際の探索深度（-1=Book使用）
+    uint64_t time;        // 計算時間（ミリ秒）
+    uint64_t nodes;       // 探索ノード数
+    uint64_t nps;         // Nodes Per Second
+    bool is_end_search;   // 完全読みかどうか
+    int probability;      // MPC確率（0-100%）
+};
+```
+
+**フィールドの意味**:
+
+- `policy`: 0-63がビット位置、-1はゲーム終了
+- `value`: プラス=有利、マイナス=不利（おおよそ石差）
+- `depth`: -1=Book、0=Level0（ランダム）、それ以外=実際の探索深度
+- `probability`: MPC（Multi-Probability Cut）の信頼度
+
 #### 2. ボードエンコーディング
 
 ✅ **完全に確認済み**
@@ -131,13 +199,72 @@ constexpr Level level_definition[N_LEVEL] = {
 
 ## 座標系の完全な理解
 
+### Board構造体とビットボード
+
+**発見箇所**: `board.hpp:20-23`
+
+```cpp
+class Board {
+    public:
+        uint64_t player;    // 現在のプレイヤーの石位置（ビットボード）
+        uint64_t opponent;  // 相手の石位置（ビットボード）
+};
+```
+
+**ビットボードの構造**:
+
+- 各ビット位置がボード上のマスに対応
+- ビット=1: 石がある、ビット=0: 石がない
+- `player` と `opponent` の2つのビットボードで全体の状態を表現
+
+### input_board関数の詳細
+
+**発見箇所**: `Egaroucid_for_Web.cpp:29-52`
+
+```cpp
+inline int input_board(Board *bd, const int *arr, const int ai_player) {
+    int i, j;
+    uint64_t b = 0ULL, w = 0ULL;  // 黒と白のビットボード
+    int elem;
+    int n_stones = 0;
+    for (i = 0; i < HW; ++i) {
+        for (j = 0; j < HW; ++j) {
+            elem = arr[i * HW + j];  // row-major order
+            if (elem != -1) {
+                // ビット位置: HW2_M1 - i * HW - j = 63 - (row * 8 + col)
+                b |= (uint64_t)(elem == 0) << (HW2_M1 - i * HW - j);  // 黒石
+                w |= (uint64_t)(elem == 1) << (HW2_M1 - i * HW - j);  // 白石
+                ++n_stones;
+            }
+        }
+    }
+    // ai_playerに応じてplayer/opponentを設定
+    if (ai_player == 0) {  // AIが黒
+        bd->player = b;    // player = 黒
+        bd->opponent = w;  // opponent = 白
+    } else{                // AIが白
+        bd->player = w;    // player = 白
+        bd->opponent = b;  // opponent = 黒
+    }
+    return n_stones;
+}
+```
+
+**重要なポイント**:
+
+1. **配列エンコーディング**: `-1=空, 0=黒, 1=白`
+2. **ai_playerの意味**:
+   - `ai_player=0`: AIは黒番 → `bd->player`が黒のビットボード
+   - `ai_player=1`: AIは白番 → `bd->player`が白のビットボード
+3. **Board構造体の視点**: 常に `player` が「手番側」、`opponent` が「相手側」
+
 ### 配列インデックス → ビット位置
 
 ```
-arr[0]  (row=0, col=0) → bit 63 → a8
+arr[0]  (row=0, col=0) → bit 63 → a8（画面表示）
 arr[1]  (row=0, col=1) → bit 62 → b8
-arr[7]  (row=0, col=7) → bit 55 → h8
-arr[8]  (row=1, col=0) → bit 54 → a7
+arr[7]  (row=0, col=7) → bit 56 → h8
+arr[8]  (row=1, col=0) → bit 55 → a7
 ...
 arr[63] (row=7, col=7) → bit 0  → h1
 ```
@@ -146,6 +273,7 @@ arr[63] (row=7, col=7) → bit 0  → h1
 
 ```cpp
 bit_position = 63 - (row * 8 + col)
+array_index = row * 8 + col
 ```
 
 **根拠**: `Egaroucid_for_Web.cpp:38-39`
@@ -158,32 +286,77 @@ const row = Math.floor(index / 8);
 const col = index % 8;
 ```
 
+### 座標表示（idx_to_coord）
+
+**発見箇所**: `util.hpp:38-42`
+
+```cpp
+string idx_to_coord(int idx){
+    int y = HW_M1 - idx / HW;  // HW_M1 = 7
+    int x = HW_M1 - idx % HW;  // HW_M1 = 7
+    const string x_coord = "abcdefgh";
+    return x_coord[x] + to_string(y + 1);
+}
+```
+
+**注意**: `idx_to_coord` はログ出力用の関数で、WASMインターフェースとは無関係
+
+- idx=63 → "a1"
+- idx=0 → "h8"
+
 ---
 
 ## 重要な発見事項
 
-### 1. calc_value の ai_player 反転
+### 1. calc_value の ai_player 反転と評価値反転
 
-**発見箇所**: `Egaroucid_for_Web.cpp:98`
+**発見箇所**: `Egaroucid_for_Web.cpp:93-122`
 
 ```cpp
+// 行98: ai_playerを反転してボードを構築
 n_stones = input_board(&b, arr_board, 1 - ai_player);  // ★ 反転
+
+// 行104-114: 各合法手について評価
+uint64_t legal = b.get_legal();
+for (uint_fast8_t cell = first_bit(&legal); legal; cell = next_bit(&legal)) {
+    calc_flip(&flip, &b, cell);
+    b.move_board(&flip);
+    // 行111: 評価値を反転（マイナス符号）
+    tmp_res[cell] = -ai(b, level, true, false, false).value;  // ★ 評価値反転
+    b.undo_board(&flip);
+}
 ```
 
-**影響**:
+**詳細な挙動の説明**:
 
-- JavaScript から呼び出す際、期待する視点と逆の `ai_player` を渡す必要がある
-- または、この反転を考慮してラッパー関数を作成
+1. `ai_player` パラメータを `1 - ai_player` で反転してボードを構築
+   - 例: `ai_player=0`（黒）で呼び出すと、`1-0=1`（白）でボード構築
+   - これにより、`b.player` = 白、`b.opponent` = 黒となる
 
-**推奨対応**:
+2. 各合法手について、手を打った後のボード `b` で `ai()` を呼び出す
+   - この時点で `b.player` は相手（黒）、`b.opponent` は自分（白）
+   - つまり**相手の視点**で評価値を計算
+
+3. 評価値を反転（`-ai(...).value`）して自分の視点の評価値に変換
+   - 相手視点の評価値 `+10` → 自分視点では `-10`
+   - 相手にとって良い手は、自分にとって悪い手
+
+**なぜこのような実装になっているか**:
+
+- `calc_value` は「現在のボードから各合法手を打った後の局面」を評価する
+- 手を打つと手番が交代するため、相手視点でのボードになる
+- 相手視点で評価して反転することで、自分視点の評価値を得る
+
+**JavaScript からの呼び出し**:
 
 ```javascript
-function calcValueWrapper(module, board, level, perspective) {
-  // perspective: 'black' or 'white'
-  // 内部で反転されるため、逆を渡す
-  const ai_player = perspective === 'black' ? 1 : 0; // ★ 反転
-  module._calc_value(boardPtr, resPtr, level, ai_player);
-}
+// calc_valueを呼び出す際は、ai_playerをそのまま渡す
+// 例: 黒番の全合法手を評価したい場合
+const ai_player = 0; // 黒
+module._calc_value(boardPtr, resPtr, level, ai_player);
+
+// 内部で1-ai_playerされるが、これは意図的な設計
+// 結果は黒視点での各手の評価値となる
 ```
 
 ### 2. calc_value の結果配列オフセット
@@ -214,19 +387,82 @@ for (let i = 0; i < 64; i++) {
 }
 ```
 
-### 3. Level 0 の挙動
+### 3. Level 0 の挙動とLevel定義の詳細
 
-**発見箇所**: `level.hpp:47`
+**発見箇所**: `level.hpp:47`、`ai.hpp:222-232`
 
 ```cpp
+// level.hpp:47 - Level 0の定義
 {0, NOMPC, 0, NOMPC, NODEPTH, NOMPC, NODEPTH, NOMPC, NODEPTH, NOMPC, NODEPTH, NOMPC},
+
+// ai.hpp:222-232 - Level 0の実装
+if (level == 0){
+    uint64_t legal = board.get_legal();
+    vector<int> move_lst;
+    for (uint_fast8_t cell = first_bit(&legal); legal; cell = next_bit(&legal))
+        move_lst.emplace_back(cell);
+    res.policy = move_lst[myrandrange(0, (int)move_lst.size())];  // ★ ランダム選択
+    res.value = value_sign * mid_evaluate(&board);
+    res.depth = 0;
+    res.nps = 0;
+    res.is_end_search = false;
+    res.probability = 0;
+}
 ```
 
-**影響**:
+**挙動**:
 
-- Level 0 は探索深度0、完全読みなし
-- ほぼランダムな手を返す
-- テスト用途には Level 1 以上を推奨
+- Level 0 は探索深度0
+- 合法手の中から**ランダムに選択**（探索なし）
+- 評価値は `mid_evaluate()` （中盤評価関数）を使用
+- `probability = 0`（信頼度0%）
+
+**テストへの影響**:
+
+- Level 0 は非決定的（ランダム）なため、テストには不向き
+- 決定的な動作が必要な場合は Level 1 以上を推奨
+- Level 0 の評価値は静的評価のため、テスト用の簡易値として使用可能
+
+### 4. ai関数のパス処理とBook（定石）機能
+
+**発見箇所**: `ai.hpp:192-244`
+
+```cpp
+// 行195-208: パス処理
+if (board.get_legal() == 0ULL){  // 合法手がない場合
+    board.pass();  // パス
+    if (board.get_legal() == 0ULL){  // パス後も合法手がない = ゲーム終了
+        res.policy = -1;  // ★ policy=-1 はゲーム終了
+        res.value = -board.score_player();  // 最終スコア
+        res.depth = 0;
+        res.nps = 0;
+        res.is_end_search = true;
+        res.probability = 100;
+        return res;
+    } else{
+        value_sign = -1;  // ★ パス後は評価値を反転
+    }
+}
+
+// 行209-220: Book（定石）処理
+Book_value book_result = book.get_random(&board, 0);
+if (book_result.policy != -1 && use_book){
+    res.policy = book_result.policy;
+    res.value = value_sign * book_result.value;
+    res.depth = SEARCH_BOOK;  // SEARCH_BOOK = -1
+    res.nps = 0;
+    res.is_end_search = false;
+    res.probability = 100;
+    return res;  // ★ Book利用時は探索せずに返す
+}
+```
+
+**重要なポイント**:
+
+1. **policy = -1 の意味**: ゲーム終了（両者パス）
+2. **パス後の評価値反転**: パスすると手番が変わらないため、評価値の符号を反転
+3. **Book機能**: `use_book=true` の場合、定石データベースから手を選択
+4. **depth = -1**: Bookから手を取得した場合の特別な値
 
 ---
 
@@ -234,28 +470,47 @@ for (let i = 0; i < 64; i++) {
 
 ### 1. Emscripten ビルド設定
 
+**部分的に確認済み**:
+
+- `web_resources/ja/web/ai.js` は標準的なEmscripten glue codeを使用
+- WASMファイル名: `ai.wasm`（`ai.js`内で確認）
+- メモリ管理: Emscripten標準の`_malloc`/`_free`を使用
+
 **未調査項目**:
 
-- 実際のコンパイルコマンド
-- エクスポート関数名のマングリング有無
-- メモリ設定（初期サイズ、最大サイズ）
+- 実際のEmscriptenコンパイルコマンド
+- WASMビルド用のMakefileまたはビルドスクリプト
+- `-s EXPORTED_FUNCTIONS` の設定内容
+- 初期メモリサイズと最大メモリサイズ
 
 **推奨調査方法**:
 
-- `Makefile` または `build.sh` の確認
-- `web_resources/ja/web/ai.js` の Emscripten glue code 解析
+- `find .analysis/egaroucid -name "*.sh" -o -name "*emscripten*" -o -name "*wasm*"` でビルドスクリプトを検索
+- 実際の `ai.wasm` ファイルの解析（`wasm-objdump`等）
 
-### 2. 評価値の範囲
+### 2. 評価値の範囲と意味
+
+**部分的に確認済み**:
+
+```cpp
+// ai.hpp:199 - ゲーム終了時の評価値
+res.value = -board.score_player();  // 最終スコア（石差）
+```
+
+- ゲーム終了時: `-64` ～ `+64`（石差）
+- 中盤・終盤の評価値: おおよそ石差ベースだが、確率的探索の影響あり
 
 **未調査項目**:
 
-- `value` の最小値・最大値
-- 評価値のスケール（石差ベース？確定石ベース？）
+- 中盤評価値（`mid_evaluate()`）の正確な範囲
+- 完全読み時の評価値の精度
+- 評価値と実際の石差の相関
 
 **推奨調査方法**:
 
 - 実際の WASM を実行して、様々な局面での評価値を収集
-- 評価関数の実装コード（`evaluate.hpp`）を解析
+- 評価関数の実装コード（`evaluate.hpp`）の詳細解析
+- 初期局面、中盤、終盤での評価値の分布を測定
 
 ### 3. 計算時間の保証
 

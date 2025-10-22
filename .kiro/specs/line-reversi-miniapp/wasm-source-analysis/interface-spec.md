@@ -78,13 +78,30 @@ extern "C" int ai_js(int *arr_board, int level, int ai_player)
   - `1`: 白石 (WHITE)
   - 配列インデックス順序: row-major (`arr[i*8+j]` = row i, col j)
 - `level` (int): AI の強さレベル (0-60)
-  - 0: 探索なし（ほぼランダム）
-  - 1-10: 低レベル（高速、浅い探索）
-  - 11-20: 中レベル（MPC使用開始）
-  - 21-60: 高レベル（深い探索、終盤完全読み）
-- `ai_player` (int): AI が操作するプレイヤー
-  - `0`: AI は黒石側
-  - `1`: AI は白石側
+  - **Level 0**: 探索なし（合法手からランダム選択、非決定的）
+    - `probability = 0`、`depth = 0`
+    - 評価値は `mid_evaluate()` による静的評価
+  - **Level 1-10**: 低レベル（高速、浅い探索）
+  - **Level 11-20**: 中レベル（MPC使用開始）
+  - **Level 21-30**: 高レベル（深い探索）
+  - **Level 31-60**: 最高レベル（終盤完全読み）
+- `ai_player` (int): AI が操作するプレイヤー **（重要: Board構造体の視点を決定）**
+  - `0`: **AI は黒番** → `Board.player` = 黒のビットボード、`Board.opponent` = 白のビットボード
+  - `1`: **AI は白番** → `Board.player` = 白のビットボード、`Board.opponent` = 黒のビットボード
+
+**重要な内部処理**:
+
+```cpp
+// Egaroucid_for_Web.cpp:83
+n_stones = input_board(&b, arr_board, ai_player);  // ★ ai_playerをそのまま渡す
+
+// Egaroucid_for_Web.cpp:86
+result = ai(b, level, true, false, true);
+```
+
+- `ai_js` は `ai_player` パラメータを**そのまま**使用
+- `ai()` 関数内でパス処理、Book検索、探索を実行
+- 返り値は呼び出し側の視点（`ai_player`）での評価値
 
 **戻り値**: エンコードされた結果
 
@@ -137,34 +154,68 @@ extern "C" void calc_value(int *arr_board, int *res, int level, int ai_player)
 - `arr_board` (int\*): ボード状態の配列へのポインタ（64要素）
 - `res` (int\*): 結果を格納する配列へのポインタ（74要素以上必要）
 - `level` (int): AI の強さレベル (0-60)
-- `ai_player` (int): 評価するプレイヤー
-  - **重要**: 内部で反転される (`1 - ai_player`)
+- `ai_player` (int): 評価する側のプレイヤー
+  - `0`: 黒番の視点で全合法手を評価
+  - `1`: 白番の視点で全合法手を評価
+  - **重要**: 内部で `1 - ai_player` に反転される
 
-**処理内容**:
+**処理内容と重要な挙動**:
 
 ```cpp
 extern "C" void calc_value(int *arr_board, int *res, int level, int ai_player) {
     Board b;
-    int n_stones = input_board(&b, arr_board, 1 - ai_player);  // ★反転
-    int tmp_res[HW2];
+    Search_result result;
 
-    // 全ての合法手について評価値を計算
+    // ★1. ai_playerを反転してボード構築
+    // 例: ai_player=0 (黒視点) → 1-0=1 (白) でボード構築
+    //     → b.player=白, b.opponent=黒 となる
+    int n_stones = input_board(&b, arr_board, 1 - ai_player);
+
+    int tmp_res[HW2];
     for (i = 0; i < HW2; ++i)
         tmp_res[i] = -1;  // 非合法手は -1
 
+    // ★2. 各合法手について評価
     uint64_t legal = b.get_legal();
     for (uint_fast8_t cell = first_bit(&legal); legal; cell = next_bit(&legal)) {
         calc_flip(&flip, &b, cell);
-        b.move_board(&flip);
+        b.move_board(&flip);  // 手を打つと相手視点になる
+
+        // ★3. 評価値を反転（マイナス符号）
+        // ai()は相手視点での評価値を返すため、反転して自分視点の評価値にする
         tmp_res[cell] = -ai(b, level, true, false, false).value;
+
         b.undo_board(&flip);
     }
 
-    // 結果を res 配列に格納（オフセット10、座標変換あり）
+    // ★4. 結果をオフセット10でビット位置を反転して格納
     for (i = 0; i < HW2; ++i)
-        res[10 + HW2_M1 - i] = tmp_res[i];
+        res[10 + HW2_M1 - i] = tmp_res[i];  // res[10+63-i] = tmp_res[i]
 }
 ```
+
+**なぜこのような実装になっているか**:
+
+1. **ai_player反転の理由**:
+   - `calc_value`は「現在の局面から各合法手を打った後の評価」を計算
+   - 手を打つと手番が交代するため、相手視点でボードを構築
+   - 例: 黒番(ai_player=0)で呼び出す → 白視点(1)でボード構築 → 各手を打つと黒番になる
+
+2. **評価値反転の理由**:
+   - `b.move_board()`で手を打つと`b.player`と`b.opponent`が入れ替わる
+   - `ai()`は常に`b.player`（手番側）の視点で評価値を返す
+   - 相手にとって+10の手 = 自分にとって-10の手
+
+3. **オフセット10の理由**:
+   - 先頭10要素は予約領域（仕様上の理由、詳細不明）
+   - ビット位置の反転（`63-i`）は座標系の変換
+
+**結果の解釈**:
+
+- `res[10]` ～ `res[73]`: ビット位置63～0の評価値
+- 正の値: その手を打つとai_player側が有利
+- 負の値: その手を打つとai_player側が不利
+- `-1`: 非合法手
 
 **結果配列のレイアウト**:
 
