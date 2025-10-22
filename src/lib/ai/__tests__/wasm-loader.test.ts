@@ -17,6 +17,7 @@ const mockWASMModule = {
   memory: {} as WebAssembly.Memory,
   HEAP8: new Int8Array(64),
   HEAPU8: new Uint8Array(64),
+  HEAP32: new Int32Array(64),
 };
 
 describe('loadWASM', () => {
