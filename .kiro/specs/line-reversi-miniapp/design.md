@@ -726,110 +726,25 @@ type Direction =
 - **Outbound**: WASMBridge、AIEngineInterface
 - **External**: WebAssembly Runtime、ai.wasm
 
-**Egaroucid WASM Integration Details** (分析完了):
+**Egaroucid WASM Integration** (C++ソースコード解析完了):
 
-**ファイル構成**:
+完全なWASM統合の仕様とインタフェース詳細は、別途作成された解析ドキュメントを参照してください:
 
-- **WASM Binary**: `ai.wasm` (~1-3 MB、Emscripten compiled C++ reversi engine)
-- **JavaScript Loader**: `ai.js` (~69 KB、Emscripten runtime + glue code)
-- **Location**: `.kiro/specs/line-reversi-miniapp/resources/`
+- **[WASM Source Analysis](./wasm-source-analysis/)**: C++ソースコードの完全な解析レポートとインタフェース仕様
+  - **[analysis-report.md](./wasm-source-analysis/analysis-report.md)**: Egaroucid C++コードの包括的な解析、全5つのエクスポート関数の詳細動作、ビットボード実装、座標系マッピング、Emscriptenビルド構成
+  - **[interface-spec.md](./wasm-source-analysis/interface-spec.md)**: WASM統合のための実装仕様、ボードエンコーディング/デコーディング、メモリ管理、エラーハンドリング、実装例
 
-**WASM Module Exports** (主要関数):
+**統合の概要**:
 
-**⚠️ 重要な注記**: ai-ex.js（非minified版）の解析により、実際のWASMエクスポートシグネチャは以下の通りより多くのパラメータを持つことが判明:
+- **WASM Binary**: `ai.wasm` (~1.4 MB、Emscripten 3.1.20でコンパイルされたC++ Reversi Engine)
+- **JavaScript Loader**: `ai.js` (Emscriptenランタイム + グルーコード)
+- **主要エクスポート**: `_init_ai()`, `_calc_value()`, `_ai_js()`, `_stop()`, `_resume()`, `_malloc()`, `_free()`
+- **ボードエンコーディング**: Int32Array (64要素、256 bytes)、セル値: -1=empty, 0=black, 1=white
+- **座標系**: ビット位置 = `63 - (row * 8 + col)` (座標系変換に注意)
+- **Level System**: 61レベル (0-60)、Level 0はランダム（非決定的）
+- **実行モデル**: 同期ブロッキング → Web Worker必須、3秒タイムアウト推奨
 
-- `_init_ai(a0)` - 1パラメータ (用途未確認)
-- `_calc_value(a0, a1, a2, a3)` - 4パラメータ (a1, a2, a3の用途未確認)
-- `_ai_js(a0, a1, a2)` - 3パラメータ (新規発見、用途未確認)
-
-下記のインタフェース定義は**使用上の簡略化版**であり、追加パラメータはオプショナルまたはデフォルト値を持つと推定されます。実装フェーズで実際の動作を検証し、必要に応じて調整します。
-
-```typescript
-interface EgaroucidWASMModule {
-  // AI計算(主要関数)
-  // 実際のシグネチャ: _calc_value(a0, a1?, a2?, a3?)
-  // 簡略化版: 最初のパラメータ(boardPtr)のみ使用を想定
-  _calc_value(boardPtr: number, ...args: unknown[]): number; // 最善手を計算、結果はencoded position
-
-  // AI初期化(アプリ起動時1回)
-  // 実際のシグネチャ: _init_ai(a0?)
-  // 簡略化版: パラメータなしで呼び出し可能と想定
-  _init_ai(config?: unknown): void;
-
-  // 代替AI計算関数(ai-ex.jsで発見、用途要調査)
-  // オリジナルのWeb実装で使用される可能性あり
-  _ai_js?(board: unknown, level?: number, other?: unknown): unknown;
-
-  // 計算制御
-  _resume(): void; // 中断した計算を再開
-  _stop(): void; // 計算中断
-
-  // メモリ管理(Emscripten標準)
-  _malloc(size: number): number; // WASMメモリ割り当て
-  _free(ptr: number): void; // メモリ解放
-
-  // エクスポートされたメモリとヒープビュー
-  memory: WebAssembly.Memory;
-  HEAP8: Int8Array;
-  HEAPU8: Uint8Array;
-}
-```
-
-**実装時の検証項目**:
-
-1. `_calc_value(boardPtr)`が単一パラメータで正常に動作するか確認
-2. 動作しない場合、追加パラメータ(a1, a2, a3)の用途を特定（難易度レベル、探索深度、タイムアウト等の可能性）
-3. `_ai_js`関数の用途を調査（オリジナルWeb版のソースコード参照が必要）
-4. `_init_ai()`がパラメータなしで呼び出し可能か確認
-
-**ボード状態エンコーディング** (確定仕様):
-
-- **メモリレイアウト**: 64 bytes (8x8 grid in row-major order)
-- **セル値**: 0 = empty, 1 = black (user), 2 = white (AI)
-- **Physical Layout**: Byte 0-7 = Row 0, Byte 8-15 = Row 1, ..., Byte 56-63 = Row 7
-- **Example encoding**:
-  ```typescript
-  const boardPtr = Module._malloc(64);
-  const boardHeap = new Uint8Array(Module.memory.buffer, boardPtr, 64);
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      const cell = board[row][col];
-      boardHeap[row * 8 + col] =
-        cell === 'black' ? 1 : cell === 'white' ? 2 : 0;
-    }
-  }
-  ```
-
-**AI応答デコーディング**:
-
-- **Return Value**: `_calc_value()`は単一のinteger (0-63の範囲)
-- **Position extraction**: `row = Math.floor(result / 8)`, `col = result % 8`
-- **Validation required**: 結果が0-63の範囲外の場合はエラーとして扱う
-
-**実行モデル** (重要):
-
-- **WASM関数は同期的(blocking)**: `_calc_value()`は完了まで制御を返さない
-- **典型的な計算時間**: 0.5-2秒(ボード複雑度による)
-- **UIブロック回避策**: Web Workerで実行必須(メインスレッドで実行すると画面フリーズ)
-- **Timeout strategy**: Promise with 3秒タイムアウト、超過時はrandom valid moveにフォールバック
-
-**初期化パターン**:
-
-```typescript
-// WASMモジュール初期化(非同期)
-await new Promise((resolve) => {
-  window.Module.onRuntimeInitialized = () => {
-    window.Module._init_ai(); // AI特有の初期化
-    resolve();
-  };
-});
-```
-
-**エラーハンドリング**:
-
-- **Load phase**: fetch失敗、WebAssembly.instantiate失敗 → UI error表示
-- **Execution phase**: \_malloc失敗、invalid response (< 0 or >= 64) → random valid move
-- **Timeout**: 3秒以内に応答なし → calculation中断、random valid move返却
+詳細な実装ガイド、エラーハンドリング戦略、パフォーマンス考慮事項については上記のドキュメントを参照してください。
 
 **Contract Definition**
 
