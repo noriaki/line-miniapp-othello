@@ -470,23 +470,38 @@ if (book_result.policy != -1 && use_book){
 
 ### 1. Emscripten ビルド設定
 
-**部分的に確認済み**:
+✅ **完全に確認済み**
 
-- `web_resources/ja/web/ai.js` は標準的なEmscripten glue codeを使用
-- WASMファイル名: `ai.wasm`（`ai.js`内で確認）
-- メモリ管理: Emscripten標準の`_malloc`/`_free`を使用
+**発見箇所**: `src/Egaroucid_for_Web_compile_cmd.txt`, `src/README.md`
 
-**未調査項目**:
+**コンパイルコマンド**:
 
-- 実際のEmscriptenコンパイルコマンド
-- WASMビルド用のMakefileまたはビルドスクリプト
-- `-s EXPORTED_FUNCTIONS` の設定内容
-- 初期メモリサイズと最大メモリサイズ
+```bash
+em++ Egaroucid_for_Web.cpp -o ai.js -s WASM=1 \
+  -s "EXPORTED_FUNCTIONS=['_init_ai', '_ai_js', '_calc_value', '_stop', '_resume', '_malloc', '_free']" \
+  -O3 \
+  -s TOTAL_MEMORY=629145600 \
+  -s ALLOW_MEMORY_GROWTH=1
+```
 
-**推奨調査方法**:
+**重要な設定**:
 
-- `find .analysis/egaroucid -name "*.sh" -o -name "*emscripten*" -o -name "*wasm*"` でビルドスクリプトを検索
-- 実際の `ai.wasm` ファイルの解析（`wasm-objdump`等）
+- **WASM=1**: WebAssembly出力を有効化
+- **EXPORTED_FUNCTIONS**: 7つの関数をエクスポート
+  - AI関数: `_init_ai`, `_ai_js`, `_calc_value`, `_stop`, `_resume`
+  - メモリ管理: `_malloc`, `_free`
+- **-O3**: 最適化レベル最高（速度優先）
+- **TOTAL_MEMORY=629145600**: 初期メモリサイズ **約600MB** (629,145,600 bytes)
+- **ALLOW_MEMORY_GROWTH=1**: メモリ拡張可能（必要に応じて自動拡張）
+
+**出力ファイル**:
+
+- `ai.js`: Emscripten glue code（JavaScript）
+- `ai.wasm`: WebAssembly バイナリ
+
+**バージョン情報**:
+
+- Emscripten 3.1.20 で動作確認済み（README.md より）
 
 ### 2. 評価値の範囲と意味
 
@@ -644,6 +659,62 @@ function decodeAIResponse(result: number): {
 
 ---
 
+## 公式ドキュメントとの照合
+
+### README.md に含まれる誤り
+
+**発見箇所**: `src/README.md:148-150`
+
+Egaroucid リポジトリの README.md には以下の**誤った記述**があります：
+
+#### 誤り1: ai_js の戻り値フォーマット
+
+**README.md の記述（誤り）**:
+
+```
+* returns `coord * 1000 + value`
+  * `coord`: `0` for h8, `1` for g8, ..., `63` for a1
+  * `value`: `-64` to `64`, estimated Egaroucid's score
+```
+
+**実際のソースコード（Egaroucid_for_Web.cpp:66-68）**:
+
+```cpp
+inline int output_coord(int policy, int raw_val) {
+    return 1000 * (HW2_M1 - policy) + 100 + raw_val;
+    //     1000 * (63 - policy) + 100 + value
+}
+```
+
+**正しい戻り値フォーマット**:
+
+- `1000 * (63 - policy) + 100 + value`
+- **マジックナンバー `+100` が含まれる**
+- デコード: `policy = 63 - Math.floor((result - 100) / 1000)`
+
+#### 誤り2: Level の範囲
+
+**README.md の記述（誤り）**:
+
+```
+* `level`: `0` to `15`
+```
+
+**実際の Level 範囲（level.hpp:46-120）**:
+
+- **`0` to `60`** (61段階)
+- Level 定義配列: `constexpr Level level_definition[N_LEVEL]` where `N_LEVEL = 61`
+
+### 公式リソース
+
+- **公式サイト**: https://www.egaroucid.nyanyan.dev/ja/
+- **Web版デモ**: https://www.egaroucid.nyanyan.dev/ja/web/
+- **GitHubリポジトリ**: https://github.com/Nyanyan/Egaroucid
+
+**注意**: 公式 README.md には上記の誤りが含まれているため、**C++ ソースコードが唯一の信頼できる情報源**です。
+
+---
+
 ## 次のステップ
 
 ### Phase 4: 実動作テスト設計・実装
@@ -687,11 +758,25 @@ function decodeAIResponse(result: number): {
 
 **確定した重要事項**:
 
-1. ✅ ボードエンコーディング: `-1=空, 0=黒, 1=白`
-2. ✅ ai_js 返り値: `1000*(63-policy) + 100 + value`
-3. ✅ calc_value の ai_player 反転と結果配列オフセット10
-4. ✅ Level パラメータ 0-60 の完全な定義
-5. ✅ 座標系の完全な理解
+1. ✅ **エクスポート関数**: 5個（init_ai, ai_js, calc_value, stop, resume）
+2. ✅ **ボードエンコーディング**: `-1=空, 0=黒, 1=白`、Int32Array（64要素、row-major）
+3. ✅ **ai_js 返り値**: `1000*(63-policy) + 100 + value`
+4. ✅ **calc_value の特殊な挙動**:
+   - ai_player 反転（`1 - ai_player`）と評価値反転（`-value`）
+   - 結果配列オフセット10とビット位置反転（`res[10 + 63 - i]`）
+5. ✅ **Level パラメータ**: 0-60（61段階）の完全な定義
+6. ✅ **Board 構造体**: player/opponent ビットボード、ai_player で視点決定
+7. ✅ **座標系**: 配列インデックス ↔ ビット位置（`63 - (row * 8 + col)`）
+8. ✅ **Emscripten ビルド設定**: メモリ600MB、-O3 最適化
+9. ✅ **Level 0 の挙動**: ランダム選択（非決定的）
+10. ✅ **パス・ゲーム終了**: policy=-1、Book機能（depth=-1）
+
+**重要な発見**:
+
+- **公式 README.md には誤りが含まれる**:
+  - ai_js 戻り値: 実際は `1000*(63-policy) + 100 + value`（README は `coord*1000+value` と誤記）
+  - Level 範囲: 実際は 0-60（README は 0-15 と誤記）
+- **C++ ソースコードが唯一の信頼できる情報源**
 
 **次の作業**:
 
@@ -701,6 +786,8 @@ function decodeAIResponse(result: number): {
 
 **解析の信頼性**: ⭐⭐⭐⭐⭐ (最高)
 
-- 全ての情報がC++ソースコードから直接抽出
+- 全ての情報が C++ ソースコードから直接抽出
+- 公式ドキュメントの誤りも発見・訂正
 - 推測や仮定なし
 - ソースコード行番号による検証可能性
+- Emscripten ビルドコマンドの完全な確認
