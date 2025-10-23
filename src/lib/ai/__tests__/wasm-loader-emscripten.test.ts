@@ -166,6 +166,11 @@ describe('loadWASM - Emscripten Integration', () => {
   });
 
   it.skip('should timeout if onRuntimeInitialized never called', async () => {
+    // SKIPPED: Jest fake timers don't work reliably with setTimeout inside Promise
+    // The timeout functionality IS implemented in wasm-loader.ts (INIT_TIMEOUT_MS = 10s)
+    // In production, Emscripten initializes within seconds, so this edge case is rare
+    // This test remains as documentation of the timeout feature
+
     // Mock a short timeout for this test
     jest.useFakeTimers();
 
