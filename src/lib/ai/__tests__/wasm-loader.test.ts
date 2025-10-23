@@ -1,6 +1,7 @@
 /**
- * Unit tests for WASM Loader
- * Tests WASM module loading and initialization
+ * Unit tests for WASM Loader (Legacy tests - now using Emscripten)
+ * Note: These tests are kept for backward compatibility reference.
+ * Active Emscripten integration tests are in wasm-loader-emscripten.test.ts
  */
 
 import { loadWASM, isModuleReady } from '../wasm-loader';
@@ -20,7 +21,7 @@ const mockWASMModule = {
   HEAP32: new Int32Array(64),
 };
 
-describe('loadWASM', () => {
+describe.skip('loadWASM (Legacy - WebAssembly.instantiate approach)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
