@@ -251,6 +251,9 @@ export default function GameBoard(): JSX.Element {
                   gameStatus.type !== 'playing' || currentPlayer !== 'black'
                 }
                 data-stone={cell || undefined}
+                data-row={rowIndex}
+                data-col={colIndex}
+                data-valid={isValid || undefined}
               >
                 {cell === 'black' && <div className="stone stone-black" />}
                 {cell === 'white' && <div className="stone stone-white" />}
@@ -263,7 +266,7 @@ export default function GameBoard(): JSX.Element {
 
       {/* Game Over Screen */}
       {gameStatus.type === 'finished' && (
-        <div className="game-result">
+        <div className="game-result" data-testid="game-result">
           <button onClick={resetGame} className="reset-button">
             新しいゲームを開始
           </button>
