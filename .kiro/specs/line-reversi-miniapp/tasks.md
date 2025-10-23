@@ -237,7 +237,7 @@
   - 全エラーを Result 型で返し、一貫したエラーハンドリングを実現
   - _Requirements: 2.2, 2.4, 9.2, 9.4_
 
-- [ ] 7.4 エラーハンドリングコンポーネントのメインアプリケーション統合
+- [x] 7.4 エラーハンドリングコンポーネントのメインアプリケーション統合
   - ErrorBoundary を app/layout.tsx でアプリ全体を wrap
   - WASMErrorHandler を AI Worker 初期化エラー時に表示するよう統合
   - useGameErrorHandler を GameBoard コンポーネントに統合
