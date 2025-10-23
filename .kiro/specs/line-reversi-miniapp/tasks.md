@@ -185,13 +185,13 @@
 
 ## 6. Emscripten WASM グルーコード統合
 
-- [ ] 6.1 Emscripten グルーコード (ai.js) の配置
+- [x] 6.1 Emscripten グルーコード (ai.js) の配置
   - .kiro/specs/line-reversi-miniapp/resources/ai.js を public/ ディレクトリにコピー
   - Next.js の静的アセット配信で ai.js が正しく提供されることを確認
   - ai.wasm と ai.js が同じディレクトリ (public/) に配置されることを確認
   - _Requirements: 3.1, 4.1_
 
-- [ ] 6.2 WASM ローダーの Emscripten 対応実装
+- [x] 6.2 WASM ローダーの Emscripten 対応実装
   - wasm-loader.ts を修正し、WebAssembly.instantiate() の直接呼び出しを削除
   - Emscripten モジュールローダーを実装:
     - 動的スクリプトロード: `<script src="/ai.js">` をプログラマティックに追加
@@ -200,14 +200,14 @@
   - Module オブジェクトから WASM エクスポート関数にアクセス
   - _Requirements: 3.1, 4.1, 4.5_
 
-- [ ] 6.3 Web Worker での Emscripten 統合
+- [x] 6.3 Web Worker での Emscripten 統合
   - ai-worker.ts で importScripts('/ai.js') を使用して Emscripten モジュールをロード
   - Worker スレッド内で Module.onRuntimeInitialized を待機
   - loadWASM() 関数を Emscripten 対応に修正
   - エラーハンドリング: Emscripten ロード失敗時の適切なエラーメッセージ
   - _Requirements: 3.4, 4.5, 9.1_
 
-- [ ] 6.4 Emscripten 統合テスト
+- [x] 6.4 Emscripten 統合テスト
   - wasm-loader.test.ts を Emscripten ロード方式に対応
   - ai-worker.test.ts で Emscripten モジュールのモックを実装
   - 統合テストで実際の ai.js 経由のロードを検証
