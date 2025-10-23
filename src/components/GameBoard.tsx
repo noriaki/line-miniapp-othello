@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { useGameState } from '@/hooks/useGameState';
 import { useAIPlayer } from '@/hooks/useAIPlayer';
+import { useGameErrorHandler } from '@/hooks/useGameErrorHandler';
 import { applyMove, validateMove } from '@/lib/game/game-logic';
 import { checkGameEnd } from '@/lib/game/game-end';
 import type { Position } from '@/lib/game/types';
@@ -34,6 +35,15 @@ export default function GameBoard(): JSX.Element {
 
   const { calculateMove } = useAIPlayer();
 
+  const {
+    handleInvalidMove,
+    getErrorMessage,
+    getSkipMessage,
+    hasInconsistency,
+    clearInconsistency,
+    getInconsistencyMessage,
+  } = useGameErrorHandler();
+
   // Check if position is a valid move
   const isValidMove = useCallback(
     (position: Position): boolean => {
@@ -52,7 +62,8 @@ export default function GameBoard(): JSX.Element {
 
       const moveResult = validateMove(board, position, currentPlayer);
       if (!moveResult.success) {
-        // Show error feedback (visual indication handled by CSS)
+        // Show error feedback with specific reason
+        handleInvalidMove(position, moveResult.error.reason);
         return;
       }
 
@@ -90,6 +101,7 @@ export default function GameBoard(): JSX.Element {
       updateBoard,
       switchPlayer,
       updateGameStatus,
+      handleInvalidMove,
     ]
   );
 
@@ -145,6 +157,32 @@ export default function GameBoard(): JSX.Element {
 
   return (
     <div data-testid="game-board" className="game-board">
+      {/* Error Messages and Notifications */}
+      {getErrorMessage() && (
+        <div className="error-message bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {getErrorMessage()}
+        </div>
+      )}
+      {getSkipMessage() && (
+        <div className="notification-message bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+          {getSkipMessage()}
+        </div>
+      )}
+      {hasInconsistency && (
+        <div className="error-message bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {getInconsistencyMessage()}
+          <button
+            onClick={() => {
+              clearInconsistency();
+              resetGame();
+            }}
+            className="ml-2 bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+          >
+            ゲームをリセット
+          </button>
+        </div>
+      )}
+
       {/* Game Status Display */}
       <div className="game-status">
         {/* Turn Indicator */}

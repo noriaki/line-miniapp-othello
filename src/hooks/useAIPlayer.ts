@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import type { Board, Player, Position } from '@/lib/game/types';
+import { selectRandomValidMove } from '@/lib/ai/ai-fallback';
+import { calculateValidMoves } from '@/lib/game/game-logic';
 
 export function useAIPlayer() {
   const workerRef = useRef<Worker | null>(null);
@@ -32,13 +34,30 @@ export function useAIPlayer() {
     async (board: Board, player: Player): Promise<Position> => {
       return new Promise((resolve, reject) => {
         if (!workerRef.current) {
-          reject(new Error('Worker not initialized'));
+          // Fallback to random move if worker not initialized
+          console.warn('AI Worker not initialized, using random fallback');
+          const validMoves = calculateValidMoves(board, player);
+          try {
+            const fallbackMove = selectRandomValidMove(validMoves);
+            resolve(fallbackMove);
+          } catch (fallbackError) {
+            reject(fallbackError);
+          }
           return;
         }
 
         // Set up timeout (3 seconds per requirement)
         const timeout = setTimeout(() => {
-          reject(new Error('AI calculation timeout (>3s)'));
+          // AI calculation timeout - use random fallback
+          console.warn('AI calculation timeout (>3s), using random fallback');
+          workerRef.current?.removeEventListener('message', handleMessage);
+          const validMoves = calculateValidMoves(board, player);
+          try {
+            const fallbackMove = selectRandomValidMove(validMoves);
+            resolve(fallbackMove);
+          } catch {
+            reject(new Error('AI calculation timeout and fallback failed'));
+          }
         }, 3000);
 
         // Set up message listener
@@ -49,7 +68,18 @@ export function useAIPlayer() {
           if (event.data.type === 'success') {
             resolve(event.data.payload.move);
           } else {
-            reject(new Error(event.data.payload.error));
+            // WASM error - use random fallback
+            console.warn(
+              'AI calculation error, using random fallback:',
+              event.data.payload.error
+            );
+            const validMoves = calculateValidMoves(board, player);
+            try {
+              const fallbackMove = selectRandomValidMove(validMoves);
+              resolve(fallbackMove);
+            } catch {
+              reject(new Error('AI calculation failed and fallback failed'));
+            }
           }
         };
 
