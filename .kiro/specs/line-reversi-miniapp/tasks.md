@@ -237,6 +237,16 @@
   - 全エラーを Result 型で返し、一貫したエラーハンドリングを実現
   - _Requirements: 2.2, 2.4, 9.2, 9.4_
 
+- [ ] 7.4 エラーハンドリングコンポーネントのメインアプリケーション統合
+  - ErrorBoundary を app/layout.tsx でアプリ全体を wrap
+  - WASMErrorHandler を AI Worker 初期化エラー時に表示するよう統合
+  - useGameErrorHandler を GameBoard コンポーネントに統合
+  - 無効な手の視覚的フィードバック (赤ハイライト、エラーメッセージ) を UI に反映
+  - ターンスキップ通知とゲーム状態不整合メッセージを UI に表示
+  - AI タイムアウト時の ai-fallback 処理を useAIPlayer に統合
+  - エラーハンドリング統合後の動作確認テストを実施
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+
 ## 8. // [対象外] パフォーマンス最適化
 
 - [ ] 8.1 React パフォーマンスの最適化
