@@ -1,12 +1,23 @@
 /**
  * WASM Loader
- * Handles loading and initialization of the Egaroucid WebAssembly module
+ * Handles loading and initialization of the Egaroucid WebAssembly module via Emscripten
  */
 
 import type { EgaroucidWASMModule, WASMLoadError, Result } from './types';
 
+// Web Worker global function declaration
+declare function importScripts(...urls: string[]): void;
+
+// Emscripten Module interface
+interface EmscriptenModule extends EgaroucidWASMModule {
+  onRuntimeInitialized?: () => void;
+}
+
+// Timeout for WASM initialization (10 seconds)
+const INIT_TIMEOUT_MS = 10000;
+
 /**
- * Load WASM module from the specified path
+ * Load WASM module from the specified path using Emscripten glue code
  * @param wasmPath - Path to the WASM file (e.g., '/ai.wasm')
  * @returns Result with loaded WASM module or error
  */
@@ -14,85 +25,102 @@ export async function loadWASM(
   wasmPath: string
 ): Promise<Result<EgaroucidWASMModule, WASMLoadError>> {
   try {
-    // Fetch WASM binary
-    let response: Response;
-    let wasmBuffer: ArrayBuffer;
-
-    try {
-      response = await fetch(wasmPath);
-    } catch (fetchError) {
-      // Network or fetch-related errors
+    // Check if we're in a Web Worker context
+    if (typeof importScripts === 'undefined') {
       return {
         success: false,
         error: {
           type: 'wasm_load_error',
           reason: 'fetch_failed',
           message:
-            fetchError instanceof Error ? fetchError.message : 'Network error',
+            'importScripts is not available. WASM loader must run in a Web Worker context.',
         },
       };
     }
 
-    if (!response.ok) {
-      return {
-        success: false,
-        error: {
-          type: 'wasm_load_error',
-          reason: 'fetch_failed',
-          message: `Failed to fetch WASM file: HTTP ${response.status}`,
-        },
-      };
-    }
+    // Derive ai.js path from ai.wasm path
+    // Examples: '/ai.wasm' -> '/ai.js', '/path/to/ai.wasm' -> '/path/to/ai.js'
+    const jsPath = wasmPath.replace(/\.wasm$/, '.js');
 
     try {
-      wasmBuffer = await response.arrayBuffer();
-    } catch (bufferError) {
+      // Load Emscripten glue code (ai.js)
+      // This will create a global Module object
+      importScripts(jsPath);
+    } catch (importError) {
       return {
         success: false,
         error: {
           type: 'wasm_load_error',
           reason: 'fetch_failed',
           message:
-            bufferError instanceof Error
-              ? bufferError.message
-              : 'Failed to read response',
+            importError instanceof Error
+              ? `Failed to load Emscripten glue code: ${importError.message}`
+              : 'Failed to load Emscripten glue code',
         },
       };
     }
 
-    // Instantiate WASM module
-    let wasmModule: WebAssembly.WebAssemblyInstantiatedSource;
-    try {
-      wasmModule = await WebAssembly.instantiate(wasmBuffer, {});
-    } catch (instantiateError) {
+    // Check if Module is available
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const Module = (self as any).Module as EmscriptenModule | undefined;
+
+    if (!Module) {
       return {
         success: false,
         error: {
           type: 'wasm_load_error',
           reason: 'instantiation_failed',
           message:
-            instantiateError instanceof Error
-              ? instantiateError.message
-              : 'Instantiation failed',
+            'Emscripten Module not found after loading ai.js. Check if ai.js is a valid Emscripten output.',
         },
       };
     }
 
-    // Extract exports
-    const exports = wasmModule.instance
-      .exports as unknown as EgaroucidWASMModule;
+    // Wait for Emscripten runtime initialization
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('WASM runtime initialization timeout'));
+      }, INIT_TIMEOUT_MS);
+
+      // Set the callback
+      Module.onRuntimeInitialized = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
+
+      // In case runtime is already initialized before we set the callback
+      // This handles the edge case where Emscripten initializes synchronously
+      if (typeof Module._malloc === 'function') {
+        clearTimeout(timeout);
+        resolve();
+      }
+    });
 
     // Initialize AI
-    if (typeof exports._init_ai === 'function') {
-      exports._init_ai();
+    if (typeof Module._init_ai === 'function') {
+      Module._init_ai();
     }
 
     return {
       success: true,
-      value: exports,
+      value: Module as EgaroucidWASMModule,
     };
   } catch (error) {
-    // Catch-all for unexpected errors
+    // Handle timeout or unexpected errors
+    if (
+      error instanceof Error &&
+      error.message.includes('initialization timeout')
+    ) {
+      return {
+        success: false,
+        error: {
+          type: 'wasm_load_error',
+          reason: 'initialization_timeout',
+          message: `WASM runtime initialization timed out after ${INIT_TIMEOUT_MS}ms`,
+        },
+      };
+    }
+
     return {
       success: false,
       error: {

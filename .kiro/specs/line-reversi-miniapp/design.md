@@ -737,12 +737,31 @@ type Direction =
 **統合の概要**:
 
 - **WASM Binary**: `ai.wasm` (~1.4 MB、Emscripten 3.1.20でコンパイルされたC++ Reversi Engine)
-- **JavaScript Loader**: `ai.js` (Emscriptenランタイム + グルーコード)
+- **Emscripten Glue Code**: `ai.js` (~94 KB、Emscriptenランタイム + グルーコード)
+  - **必須**: `ai.wasm`単体では動作せず、`ai.js`を経由してロードする必要がある
+  - **理由**: EmscriptenはWASMインポートオブジェクト（メモリ管理、システムコールなど）を提供
+  - **ロード方法**: `import()`または動的スクリプトロードで`ai.js`をロードし、Moduleオブジェクトを取得
 - **主要エクスポート**: `_init_ai()`, `_calc_value()`, `_ai_js()`, `_stop()`, `_resume()`, `_malloc()`, `_free()`
 - **ボードエンコーディング**: Int32Array (64要素、256 bytes)、セル値: -1=empty, 0=black, 1=white
 - **座標系**: ビット位置 = `63 - (row * 8 + col)` (座標系変換に注意)
 - **Level System**: 61レベル (0-60)、Level 0はランダム（非決定的）
 - **実行モデル**: 同期ブロッキング → Web Worker必須、3秒タイムアウト推奨
+
+**Emscripten統合の重要性**:
+
+Emscripten WASMは通常のWASMと異なり、以下の依存関係があります:
+
+1. **インポートオブジェクト**: メモリ管理、環境変数、システムコールのエミュレーション
+2. **ランタイム初期化**: `onRuntimeInitialized`コールバックで初期化完了を待機
+3. **HEAP管理**: `HEAP8`, `HEAP32`などのTypedArrayビューを提供
+
+直接`WebAssembly.instantiate()`を使用すると、以下のエラーが発生します:
+
+```text
+WebAssembly.instantiate(): Import #0 "a": module is not an object or function
+```
+
+正しいロード方法はTask 6で実装されます。
 
 詳細な実装ガイド、エラーハンドリング戦略、パフォーマンス考慮事項については上記のドキュメントを参照してください。
 
@@ -817,23 +836,28 @@ interface WASMBridgeService {
     wasmPath: string
   ): Promise<Result<EgaroucidWASMModule, WASMLoadError>>;
 
-  // ボード状態をWASMメモリに書き込み(64 bytes allocation)
+  // ボード状態をWASMメモリに書き込み(256 bytes allocation = 64 Int32 elements)
+  // Cell values: -1=empty, 0=black, 1=white (Int32Array)
   encodeBoard(
     module: EgaroucidWASMModule,
     board: Board,
     player: Player
   ): Result<WASMPointer, EncodeError>;
 
-  // WASM関数呼び出し(_calc_value wrapper)
-  // 注: 追加パラメータ(difficulty, depth等)は実装時に検証が必要
-  callAIFunction(
+  // WASM関数呼び出し(_ai_js wrapper)
+  // Signature: _ai_js(boardPtr: number, level: number, ai_player: number): number
+  // Returns: 1000 * (63 - policy) + 100 + value
+  callAIJSFunction(
     module: EgaroucidWASMModule,
     boardPointer: WASMPointer,
-    options?: { difficulty?: number; depth?: number; timeout?: number }
-  ): Result<number, WASMCallError>; // Returns raw encoded position (0-63)
+    level: number,
+    ai_player: number
+  ): Result<number, WASMCallError>;
 
-  // WASM応答をデコード(encoded position -> {row, col})
-  decodeResponse(encodedPosition: number): Result<Position, DecodeError>;
+  // WASM応答をデコード(1000*(63-policy)+100+value -> {row, col})
+  // policy = 63 - Math.floor((result - 100) / 1000)
+  // index = 63 - policy
+  decodeAIJSResponse(encodedResult: number): Result<Position, DecodeError>;
 
   // メモリ解放
   freeMemory(module: EgaroucidWASMModule, pointer: WASMPointer): void;
@@ -846,9 +870,10 @@ interface WASMBridgeService {
 
 type WASMPointer = number; // Pointer to allocated WASM memory
 
-// Board encoding: 64 bytes (8x8 grid)
-// Values: 0=empty, 1=black, 2=white
-type BoardEncoding = Uint8Array; // length must be 64
+// Board encoding: 256 bytes (8x8 grid, Int32Array)
+// Values: -1=empty, 0=black, 1=white
+// Memory layout: Int32Array (64 elements × 4 bytes/element = 256 bytes)
+type BoardEncoding = Int32Array; // length must be 64
 
 interface WASMLoadError {
   readonly type: 'wasm_load_error';
@@ -946,7 +971,7 @@ self.onmessage = async (event: MessageEvent<AIWorkerRequest>) => {
 
       const startTime = performance.now();
 
-      // Encode board to WASM memory
+      // Encode board to WASM memory (256 bytes)
       const boardPtr = WASMBridge.encodeBoard(
         wasmModule,
         payload.board,
@@ -954,15 +979,17 @@ self.onmessage = async (event: MessageEvent<AIWorkerRequest>) => {
       );
 
       // Call WASM (synchronous, but in worker thread)
-      // Note: 実際のシグネチャは_calc_value(a0, a1?, a2?, a3?)
-      // 追加パラメータが必要な場合は実装時に調整
-      const encodedPosition = wasmModule._calc_value(boardPtr);
+      // Signature: _ai_js(boardPtr, level, ai_player)
+      // ai_player: 0=black, 1=white
+      const level = 15; // Default level
+      const ai_player = payload.currentPlayer === 'black' ? 0 : 1;
+      const encodedResult = wasmModule._ai_js(boardPtr, level, ai_player);
 
       // Free memory immediately
       wasmModule._free(boardPtr);
 
-      // Decode response
-      const move = WASMBridge.decodeResponse(encodedPosition);
+      // Decode response (1000*(63-policy)+100+value format)
+      const move = WASMBridge.decodeAIJSResponse(encodedResult);
 
       const calculationTimeMs = performance.now() - startTime;
 
@@ -1300,29 +1327,32 @@ interface GameStateInMemory {
 ```typescript
 // JavaScript -> WASM
 interface BoardEncoding {
-  // 64 bytes (8x8 grid)
-  // 0 = empty, 1 = black, 2 = white
-  cells: Uint8Array; // length = 64
-  currentPlayer: 1 | 2; // 1 = black, 2 = white
+  // 256 bytes (8x8 grid, Int32Array)
+  // -1 = empty, 0 = black, 1 = white
+  cells: Int32Array; // length = 64
+  ai_player: 0 | 1; // 0 = black, 1 = white
 }
 
-// WASM -> JavaScript
-interface AIResponse {
+// WASM -> JavaScript (_ai_js response)
+interface AIJSResponse {
+  encodedResult: number; // 1000 * (63 - policy) + 100 + value
+  policy: number; // 0-63 (bit position)
+  value: number; // evaluation score
   row: number; // 0-7
   col: number; // 0-7
-  confidence?: number; // オプション: AIの評価値
 }
 ```
 
 **Validation Rules**:
 
-- cells配列は正確に64要素
-- 各要素は0, 1, 2のいずれか
+- cells配列は正確に64要素 (Int32Array)
+- 各要素は-1, 0, 1のいずれか
+- ai_playerは0 (black) または 1 (white)
 - rowとcolは0-7の範囲
 
 **Serialization Format**:
 
-- Binary(Uint8Array)で転送(JSONより高速)
+- Binary(Int32Array)で転送 (256 bytes)
 
 **Schema Versioning**:
 

@@ -63,15 +63,15 @@
   - _Requirements: 4.1, 4.5, 9.1_
 
 - [x] 3.2 ボード状態のエンコーディングとデコーディング
-  - JavaScript の Board 状態を 64 bytes の Uint8Array にエンコードする関数を実装
-  - セル値 (0=空, 1=黒, 2=白) のマッピングを正確に実装
-  - WASM メモリへの書き込み処理 (\_malloc、HEAP8) を実装
-  - WASM 応答 (0-63 の整数) を Position 型にデコードする関数を実装
+  - JavaScript の Board 状態を 256 bytes の Int32Array にエンコードする関数を実装
+  - セル値 (-1=空, 0=黒, 1=白) のマッピングを正確に実装
+  - WASM メモリへの書き込み処理 (\_malloc(256), HEAP32) を実装
+  - WASM 応答 (1000\*(63-policy)+100+value 形式) を Position 型にデコードする関数を実装
   - _Requirements: 4.2, 4.3, 4.4_
 
 - [x] 3.3 WASM 関数呼び出しとエラーハンドリング
-  - \_calc_value() を呼び出し、最善手を計算する関数を実装
-  - 関数シグネチャ (\_calc_value(a0, a1?, a2?, a3?)) を検証し、必要なパラメータを特定
+  - \_ai_js(boardPtr, level, ai_player) を呼び出し、最善手を計算する関数を実装
+  - 返り値 (1000\*(63-policy)+100+value) を正しくデコードする処理を実装
   - 無効な応答 (範囲外の値) を検出するバリデーションを実装
   - メモリリークを防止するため、計算後に \_free() を確実に呼び出す処理を実装
   - _Requirements: 3.2, 3.3, 3.4, 4.4, 4.5_
@@ -81,6 +81,7 @@
   - メインスレッドと Worker 間のメッセージング (AIWorkerRequest/Response) を実装
   - 3秒タイムアウトを設定し、超過時はランダムな有効手にフォールバックする処理を実装
   - Worker 内で WASM モジュールを再利用し、パフォーマンスを最適化
+  - WASMBridgeの最新API (\_ai_js with level and ai_player parameters) を正しく使用
   - _Requirements: 3.5, 8.2, 8.3_
 
 - [x] 3.5 AIEngine サービスの高レベル API 実装
@@ -147,7 +148,7 @@
   - Int32Array (64要素、256 bytes) による実際のボードエンコード実装
   - セル値マッピング: -1 = empty, 0 = black, 1 = white
   - 実際の ai.wasm を使用した \_ai_js(boardPtr, level, ai_player) の呼び出し
-  - 返り値のビット位置デコード: cell_index = 63 - return_value
+  - 返り値のデコード: policy = 63 - Math.floor((result - 100) / 1000), index = 63 - policy
   - 初期配置、中盤、終盤の各ボード状態でのテスト
   - _Requirements: 4.2, 4.3, 4.4_
 
@@ -182,99 +183,130 @@
   - 初期化前の関数呼び出しに対するエラー処理
   - _Requirements: 4.5, 9.1, 9.3_
 
-## 6. LINE ミニアプリ統合
+## 6. Emscripten WASM グルーコード統合
 
-- [ ] 6.1 LIFF SDK の統合と初期化
+- [x] 6.1 Emscripten グルーコード (ai.js) の配置
+  - .kiro/specs/line-reversi-miniapp/resources/ai.js を public/ ディレクトリにコピー
+  - Next.js の静的アセット配信で ai.js が正しく提供されることを確認
+  - ai.wasm と ai.js が同じディレクトリ (public/) に配置されることを確認
+  - _Requirements: 3.1, 4.1_
+
+- [x] 6.2 WASM ローダーの Emscripten 対応実装
+  - wasm-loader.ts を修正し、WebAssembly.instantiate() の直接呼び出しを削除
+  - Emscripten モジュールローダーを実装:
+    - 動的スクリプトロード: `<script src="/ai.js">` をプログラマティックに追加
+    - または importScripts() (Web Worker 内): `importScripts('/ai.js')`
+  - Module.onRuntimeInitialized コールバックで初期化完了を待機
+  - Module オブジェクトから WASM エクスポート関数にアクセス
+  - _Requirements: 3.1, 4.1, 4.5_
+
+- [x] 6.3 Web Worker での Emscripten 統合
+  - ai-worker.ts で importScripts('/ai.js') を使用して Emscripten モジュールをロード
+  - Worker スレッド内で Module.onRuntimeInitialized を待機
+  - loadWASM() 関数を Emscripten 対応に修正
+  - エラーハンドリング: Emscripten ロード失敗時の適切なエラーメッセージ
+  - _Requirements: 3.4, 4.5, 9.1_
+
+- [x] 6.4 Emscripten 統合テスト
+  - wasm-loader.test.ts を Emscripten ロード方式に対応
+  - ai-worker.test.ts で Emscripten モジュールのモックを実装
+  - 統合テストで実際の ai.js 経由のロードを検証
+  - エラーケース: ai.js が存在しない、ロードタイムアウト、初期化失敗
+  - _Requirements: 3.1, 3.4, 9.1, 9.2_
+
+## 7. LINE ミニアプリ統合
+
+- [ ] 7.1 LIFF SDK の統合と初期化
   - LIFF SDK 2.x を npm または CDN 経由でインストール
   - LIFF 初期化処理 (liff.init) を GameBoard 起動時に実行
   - 初期化成功/失敗のハンドリングを実装
   - 非 LINE ブラウザでのフォールバック処理を実装
   - _Requirements: 7.1, 7.2, 9.2_
 
-- [ ] 6.2 ユーザ認証とプロフィール取得
+- [ ] 7.2 ユーザ認証とプロフィール取得
   - liff.isLoggedIn() でログイン状態を確認
   - 未ログイン時に liff.login() を呼び出す処理を実装
   - liff.getProfile() でユーザプロフィール (表示名、プロフィール画像) を取得
   - ユーザ情報をゲーム画面に表示する UI を実装
   - _Requirements: 7.4_
 
-- [ ] 6.3 LINE プラットフォームガイドライン対応
+- [ ] 7.3 LINE プラットフォームガイドライン対応
   - LINE アプリ UI と調和するデザインを適用
   - LIFF 環境 (LINEアプリ内 vs 外部ブラウザ) を検出し、適切に対応
   - LINE のカラースキームとフォントを考慮した UI を実装
   - LINE ミニアプリのガイドラインに準拠したナビゲーションを実装
   - _Requirements: 7.2, 7.3_
 
-## 7. エラーハンドリングとフォールバック
+## 8. エラーハンドリングとフォールバック
 
-- [ ] 7.1 Error Boundary の実装
+- [ ] 8.1 Error Boundary の実装
   - React Error Boundary コンポーネントを実装
   - 予期しないエラーをキャッチし、ユーザフレンドリーなエラー画面を表示
   - エラーログをコンソールに出力 (ErrorLog 型でフォーマット)
   - リトライボタンとリロードボタンを配置
   - _Requirements: 9.2, 9.4, 9.5_
 
-- [ ] 7.2 WASM 関連のエラーハンドリング
+- [ ] 8.2 WASM 関連のエラーハンドリング
   - WASM ロード失敗時のエラーメッセージとリロードボタンを表示
   - WASM 初期化失敗時の適切なフォールバック処理を実装
   - AI 計算タイムアウト時にランダム有効手を選択する処理を実装
   - WASM メモリアロケーション失敗時のエラーハンドリングを実装
   - _Requirements: 4.5, 9.1, 9.3_
 
-- [ ] 7.3 ユーザ入力とビジネスロジックのエラーハンドリング
+- [ ] 8.3 ユーザ入力とビジネスロジックのエラーハンドリング
   - 無効な手をタップした際の視覚的フィードバック (赤ハイライト、メッセージ) を実装
   - 有効手がない場合のターン自動スキップ処理を実装
   - ゲーム状態の不整合を検出し、ゲームリセットを提案する処理を実装
   - 全エラーを Result 型で返し、一貫したエラーハンドリングを実現
   - _Requirements: 2.2, 2.4, 9.2, 9.4_
 
-## 8. パフォーマンス最適化
+## 9. パフォーマンス最適化
 
-- [ ] 8.1 React パフォーマンスの最適化
+- [ ] 9.1 React パフォーマンスの最適化
   - useMemo で有効手計算結果をメモ化
   - useCallback でコールバック関数を安定化し、不要な再レンダリングを防止
   - React.memo で BoardRenderer を最適化
   - React Profiler で再レンダリングのボトルネックを特定し改善
   - _Requirements: 8.2, 8.5_
 
-- [ ] 8.2 バンドルサイズとコード分割の最適化
+- [ ] 9.2 バンドルサイズとコード分割の最適化
   - Next.js の自動コード分割を活用し、Client Component を分離
   - WASM ファイルを遅延ロードし、初回表示速度を向上
   - Tailwind CSS の Purge を有効化し、未使用 CSS を削除
   - Next.js Build Analyzer でバンドルサイズを確認し、500KB (gzip) 以下に抑制
   - _Requirements: 8.1_
 
-- [ ] 8.3 静的サイト生成とキャッシュ戦略
+- [ ] 9.3 静的サイト生成とキャッシュ戦略
   - SSG による静的 HTML 生成を確認し、ビルド最適化を実施
   - Cache-Control ヘッダーを設定し、静的アセットのキャッシュを有効化
   - WASM ファイルのキャッシュ戦略を構成
   - CDN 配信を想定した最適化を実施
   - _Requirements: 1.4, 8.1_
 
-## 9. テストの実装
+## 10. テストの実装
 
-- [ ] 9.1 ユニットテストの作成
+- [ ] 10.1 ユニットテストの作成
   - GameLogic の全関数 (validateMove, applyMove, calculateValidMoves, checkGameEnd) をテスト
   - MoveValidator の findAllFlips を複雑な反転パターンでテスト
   - 境界条件とエッジケースを網羅的にテスト
   - カバレッジ 90% 以上を達成
   - _Requirements: All requirements (ゲームロジックの正確性保証)_
 
-- [ ] 9.2 統合テストの作成
+- [ ] 10.2 統合テストの作成
   - GameBoard + GameLogic 統合テスト (ユーザ操作からUI更新までのフロー)
   - AIEngine + WASMBridge 統合テスト (WASM 初期化から AI 計算までのフロー)
   - Error Boundary 統合テスト (エラー発生時の UI 表示)
   - LIFF 初期化のモックテスト (MSW を使用)
   - _Requirements: 3.1, 3.2, 4.1, 7.1, 9.1_
 
-- [ ] 9.3 E2E テストの作成
+- [ ] 10.3 E2E テストの作成
   - ゲーム起動から終了までの完全プレイフローをテスト
   - 有効手ハイライト表示とターンスキップフローをテスト
   - WASM 初期化失敗シナリオをテスト
   - 各種スマートフォン画面サイズでのレスポンシブデザインをテスト
   - _Requirements: 1.1, 2.1, 3.1, 6.1, 8.4_
 
-- [ ] 9.4 AI 対戦の E2E テスト
+- [ ] 10.4 AI 対戦の E2E テスト
   - Playwright のセットアップと e2e テストディレクトリ構成
   - ゲーム起動から AI 対戦完了までの完全フローをテスト
   - AI 計算中の UI 応答性とローディングインジケーター表示を検証
@@ -285,37 +317,37 @@
   - package.json への Playwright テスト実行スクリプト追加
   - _Requirements: 3.1, 3.4, 3.5, 4.1, 8.3, 8.4_
 
-- [ ] 9.5 パフォーマンステストの実施
+- [ ] 10.5 パフォーマンステストの実施
   - Lighthouse で FCP (< 2秒)、TTI (< 3秒) を測定
   - Chrome DevTools で UI 応答速度 (< 100ms) を測定
   - AI 計算速度 (< 3秒) を様々なボード状態でテスト
   - 長時間プレイ後のメモリリーク検証 (10ゲーム連続)
   - _Requirements: 8.1, 8.2, 8.3, 8.5_
 
-## 10. セキュリティとデプロイ準備
+## 11. セキュリティとデプロイ準備
 
-- [ ] 10.1 Content Security Policy の設定
+- [ ] 11.1 Content Security Policy の設定
   - Next.js の CSP ヘッダーを設定 (script-src, style-src, connect-src)
   - LIFF SDK とWASM 実行に必要な許可を追加
   - frame-ancestors を設定し、LIFF 環境での動作を保証
   - CSP 設定をテスト環境で検証
   - _Requirements: 7.1, 7.2_
 
-- [ ] 10.2 WASM ファイルの整合性検証
+- [ ] 11.2 WASM ファイルの整合性検証
   - Subresource Integrity (SRI) ハッシュを生成し、ai.wasm の改ざん検証を実装
   - ハッシュ検証失敗時のエラーハンドリングを実装
   - HTTPS 経由での WASM 配信を確認
   - WASM ファイルの署名検証を検討
   - _Requirements: 4.1, 9.1_
 
-- [ ] 10.3 本番環境向けビルドと最適化
+- [ ] 11.3 本番環境向けビルドと最適化
   - Next.js の本番ビルド (next build) を実行し、静的エクスポートを生成
   - 環境変数 (LIFF ID) を本番環境用に設定
   - Source Map の有効化/無効化を判断
   - ビルド成果物のサイズとパフォーマンスを最終確認
   - _Requirements: 8.1, 8.2_
 
-- [ ] 10.4 デプロイメント検証とドキュメント作成
+- [ ] 11.4 デプロイメント検証とドキュメント作成
   - CDN 配信を想定した静的ファイルの検証
   - LIFF アプリとして LINE Developers Console に登録
   - デプロイ手順書を作成 (ビルド、環境変数、CDN 設定)

@@ -66,7 +66,11 @@ async function calculateMove(
 
     try {
       // Call WASM function (synchronous, but in worker thread)
-      const callResult = callAIFunction(wasmModule, boardPtr);
+      // level: 15 (default difficulty level)
+      // ai_player: 1 (white) since currentPlayer is always white for AI
+      const level = 15;
+      const ai_player = request.payload.currentPlayer === 'black' ? 0 : 1;
+      const callResult = callAIFunction(wasmModule, boardPtr, level, ai_player);
 
       if (!callResult.success) {
         throw new Error(`WASM call failed: ${callResult.error.message}`);

@@ -16,18 +16,27 @@ export type Result<T, E> =
  * Represents the exported functions and memory from ai.wasm
  */
 export interface EgaroucidWASMModule {
-  // AI calculation (main function)
-  // Actual signature: _calc_value(a0, a1?, a2?, a3?)
-  // Simplified: first parameter (boardPtr) is mandatory
-  _calc_value(boardPtr: number, ...args: unknown[]): number;
-
   // AI initialization (called once at app startup)
-  // Actual signature: _init_ai(a0?)
-  // Simplified: can be called without parameters
-  _init_ai(config?: unknown): void;
+  // Actual signature: _init_ai(percentagePtr: number): number
+  _init_ai(percentagePtr?: number): number;
 
-  // Alternative AI calculation function (found in ai-ex.js, usage TBD)
-  _ai_js?(board: unknown, level?: number, other?: unknown): unknown;
+  // Main AI calculation function (returns best move)
+  // Signature: _ai_js(boardPtr: number, level: number, ai_player: number): number
+  // Returns: 1000*(63-policy)+100+value format
+  // - policy: bit position (0-63)
+  // - value: evaluation score
+  // - ai_player: 0=black, 1=white
+  _ai_js?(boardPtr: number, level: number, ai_player: number): number;
+
+  // Alternative AI calculation (evaluation function for all legal moves)
+  // Signature: _calc_value(boardPtr: number, resPtr: number, level: number, ai_player: number): void
+  // Note: ai_player is inverted internally (1 - ai_player)
+  _calc_value(
+    boardPtr: number,
+    resPtr: number,
+    level: number,
+    ai_player: number
+  ): void;
 
   // Calculation control
   _resume(): void; // Resume paused calculation
@@ -41,6 +50,7 @@ export interface EgaroucidWASMModule {
   memory: WebAssembly.Memory;
   HEAP8: Int8Array;
   HEAPU8: Uint8Array;
+  HEAP32: Int32Array;
 }
 
 /**
