@@ -1,7 +1,7 @@
 {
   "feature_name": "line-reversi-miniapp",
   "created_at": "2025-10-21T00:00:00Z",
-  "updated_at": "2025-10-21T12:35:00Z",
+  "updated_at": "2025-10-23T00:00:00Z",
   "language": "ja",
   "phase": "tasks-generated",
   "approvals": {
@@ -19,7 +19,9 @@
     },
     "tasks": {
       "generated": true,
-      "approved": true
+      "approved": true,
+      "updated_at": "2025-10-23T00:00:00Z",
+      "update_notes": "Task 7 (LINE Mini App Integration) removed from scope per user request. Impact addressed: removed LIFF SDK references from Task 10.1 (CSP), removed LIFF registration from Task 10.4 (Deployment), excluded Requirement 7 from all task traceability. Core game functionality (Tasks 1-6, 8-10) remains intact."
     }
   },
   "ready_for_implementation": true
