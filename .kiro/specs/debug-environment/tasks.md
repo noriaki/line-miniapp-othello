@@ -78,7 +78,7 @@ debug-environment 機能の実装タスクです。dev3000 を統合し、Claude
   - _Requirements: 2.4_
   - _Note: 実際のネットワークリクエスト記録の検証は、Next.js アプリケーションが稼働している状態で Timeline Dashboard にアクセスすることで確認可能。インフラは準備完了。_
 
-- [ ] 3. ドキュメント作成: DEBUG_SETUP.md
+- [x] 3. ドキュメント作成: DEBUG_SETUP.md
   - `/docs/DEBUG_SETUP.md` を新規作成
   - 以下のセクションを含める:
     - **Introduction**: dev3000 の概要と利点（サーバー＋ブラウザ統合記録、AI デバッグ支援、Timeline 可視化）
@@ -90,7 +90,7 @@ debug-environment 機能の実装タスクです。dev3000 を統合し、Claude
   - ドキュメント内で Claude Code (CLI) のみを対象とし、他のツール（IDE 統合、GUI MCP クライアント）への参照を含まないことを確認
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.6_
 
-- [ ] 3.1 ドキュメント作成: README.md 更新
+- [x] 3.1 ドキュメント作成: README.md 更新
   - README.md に新規セクション "## Debugging with AI Tools" を追加
   - セクションの内容:
     - 概要（2-3 行）: dev3000 を使った AI 支援デバッグ環境の説明
@@ -100,7 +100,7 @@ debug-environment 機能の実装タスクです。dev3000 を統合し、Claude
   - 既存の README.md の構成を維持し、他のセクションに影響を与えないことを確認
   - _Requirements: 3.4, 5.1_
 
-- [ ] 3.2 ドキュメント内容の検証: 開発ワークフローの説明
+- [x] 3.2 ドキュメント内容の検証: 開発ワークフローの説明
   - `/docs/DEBUG_SETUP.md` に通常開発 (`pnpm dev`) とデバッグモード (`pnpm dev:debug`) の違いを明確に説明
   - 通常開発: Next.js Dev Server のみ起動、軽量で高速
   - デバッグモード: dev3000 + Playwright Chrome + Timeline Dashboard + MCP Server、包括的な監視とデバッグ
