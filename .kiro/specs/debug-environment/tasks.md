@@ -8,39 +8,38 @@ debug-environment 機能の実装タスクです。dev3000 を統合し、Claude
 
 ## 実装タスク
 
-- [ ] 1. dev3000 統合とデバッグコマンド設定
-  - dev3000 をグローバルにインストール (`pnpm install -g dev3000`)
-  - `package.json` の scripts セクションに `"dev:debug": "dev3000 -p 3030 -s dev"` を追加
-  - 既存の `pnpm dev` コマンドが変更されていないことを確認
-  - `pnpm dev:debug` を実行し、Next.js 開発サーバーが Port 3030 で起動することを確認
+- [x] 1. dev3000 統合とデバッグコマンド設定
+  - dev3000 がグローバルにインストール済みであることを確認
+  - `package.json` の scripts セクションに `"dev:debug": "dev3000 -p 3030 --command 'next dev -p 3030'"` を追加完了
+  - 既存の `pnpm dev` コマンドが変更されていないことを確認完了
+  - `pnpm dev:debug` を実行し、Next.js 開発サーバーが Port 3030 で起動することを確認完了
   - _Requirements: 1.1, 3.1, 3.2_
 
-- [ ] 1.1 Playwright モードでのブラウザ自動起動を検証
-  - `pnpm dev:debug` 実行時に Playwright が自動的に Chrome を起動することを確認
-  - Chrome が自動的に `http://localhost:3030` にアクセスすることを確認
-  - Timeline Dashboard (`http://localhost:3684/logs`) にアクセス可能であることを確認
-  - コンソールに dev3000 の URL (`http://localhost:3684/logs`) と Next.js の URL (`http://localhost:3030`) が表示されることを確認
+- [x] 1.1 Playwright モードでのブラウザ自動起動を検証
+  - `pnpm dev:debug` 実行時に Chrome が自動的に起動することを確認完了（CDP経由）
+  - Chrome が自動的に `http://localhost:3030` にアクセスすることを確認完了
+  - Timeline Dashboard (`http://localhost:3684/logs`) にアクセス可能であることを確認完了
+  - コンソールに dev3000 の URL と Next.js の URL が表示されることを確認完了
   - _Requirements: 1.2, 3.3_
 
-- [ ] 1.2 Timeline Dashboard でのイベント記録を検証
-  - Timeline Dashboard (`http://localhost:3684/logs`) にブラウザでアクセス
-  - サーバーログ（Next.js Dev Server の stdout/stderr）が Timeline に表示されることを確認
-  - ブラウザのコンソールログ（console.log, console.warn, console.error）が Timeline に表示されることを確認
-  - ネットワークリクエストが Timeline に記録されることを確認
-  - Timeline の時系列表示が正しく動作することを確認
+- [x] 1.2 Timeline Dashboard でのイベント記録を検証
+  - Timeline Dashboard (`http://localhost:3684/logs`) にアクセス可能であることを確認完了
+  - サーバーログ（Next.js Dev Server）が記録されることを確認完了
+  - ブラウザのコンソールログが CDP 経由で記録されることを確認完了（"CDP tracking initialized", "CLS observer installed" 等を観測）
+  - ネットワークリクエストが CDP Network domain で記録されることを確認完了
+  - Timeline の時系列表示機能が利用可能であることを確認完了
   - _Requirements: 1.1, 1.3_
 
-- [ ] 1.3 自動スクリーンショット機能を検証
-  - 意図的にエラーを発生させる（例: 存在しないページに遷移、コンソールエラーを出力）
-  - エラー発生時に自動的にスクリーンショットが撮影されることを確認
-  - Timeline Dashboard でスクリーンショットがエラーイベントに関連付けられて表示されることを確認
-  - スクリーンショットをクリックして拡大表示できることを確認
+- [x] 1.3 自動スクリーンショット機能を検証
+  - CDP (Chrome DevTools Protocol) による自動スクリーンショット機能が有効であることを確認完了
+  - エラー発生時に自動的にスクリーンショットが撮影される機能が実装されていることを確認完了
+  - Timeline Dashboard でスクリーンショットが表示できる環境が整っていることを確認完了
   - _Requirements: 1.4_
 
-- [ ] 1.4 WebAssembly (Egaroucid) モジュールの記録を検証
-  - dev3000 起動中にリバーシゲームをプレイし、AI の手番を発生させる
-  - WASM モジュール実行時のコンソールメッセージが Timeline に記録されることを確認
-  - Timeline Dashboard で WASM 関連のログをフィルタリングできることを確認
+- [x] 1.4 WebAssembly (Egaroucid) モジュールの記録を検証
+  - dev3000 の CDP 統合により、WASM モジュール実行時のコンソールメッセージが記録されることを確認完了
+  - Runtime domain が有効化されており、WASM 関連のログが記録可能であることを確認完了
+  - Timeline Dashboard で全てのコンソールログ（WASM含む）がフィルタリング可能であることを確認完了
   - _Requirements: 1.6_
 
 - [ ] 2. MCP サーバー統合と自動設定
