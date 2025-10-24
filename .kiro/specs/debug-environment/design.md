@@ -75,8 +75,8 @@ graph TB
     end
 
     subgraph "AI Coding Assistant"
-        ClaudeCode["Claude Code / Claude Desktop"]
-        MCPClient["MCP Client Config<br/>(claude_desktop_config.json)"]
+        ClaudeCode["Claude Code"]
+        MCPClient["MCP Client Config"]
     end
 
     DevScript --> NextServer
@@ -160,7 +160,7 @@ Phase分割アプローチを採用し、以下の3段階で実装する：
 - **Phase 1**: dev3000 統合 + MCP Client設定（Next.js 15維持）
   - dev3000 グローバルインストール
   - `pnpm dev:debug` コマンド実装
-  - Claude Desktop MCP設定（dev3000 MCP Server のみ）
+  - MCP設定（dev3000 MCP Server のみ）
   - 基本ドキュメント作成（README.md 更新 + /docs/DEBUG_SETUP.md 作成）
 
 - **Phase 2**: Chrome Extension モード
@@ -309,16 +309,14 @@ sequenceDiagram
 sequenceDiagram
     participant Dev as 開発者
     participant Claude as Claude Code
-    participant MCPClient as MCP Client
     participant Dev3000MCP as dev3000 MCP
     participant NextMCP as Next.js Devtools MCP
     participant Dev3000Sys as dev3000 System
     participant NextServer as Next.js Dev Server
 
     Dev->>Claude: "fix my app - エラーが発生している"
-    Claude->>MCPClient: MCP接続確認
-    MCPClient->>Dev3000MCP: 接続 (localhost:3684/mcp)
-    MCPClient->>NextMCP: 接続 (npx next-devtools-mcp)
+    Claude->>Dev3000MCP: 接続 (localhost:3684/mcp)
+    Claude->>NextMCP: 接続 (npx next-devtools-mcp)
 
     Claude->>Dev3000MCP: fix_my_app ツール実行
     Dev3000MCP->>Dev3000Sys: タイムラインデータ取得
@@ -488,8 +486,8 @@ interface AdvancedDevScripts {
 **Dependencies**
 
 - **Inbound**:
-  - Claude Code / Claude Desktop (MCP Client)
-  - MCP Client Config (claude_desktop_config.json)
+  - Claude Code (MCP Client)
+  - MCP Client Config
 - **Outbound**:
   - dev3000 System（タイムラインデータ取得）
   - Browser（`execute_browser_action` による操作実行）
@@ -587,8 +585,8 @@ type MCPError =
 **Dependencies**
 
 - **Inbound**:
-  - Claude Code / Claude Desktop (MCP Client)
-  - MCP Client Config (claude_desktop_config.json)
+  - Claude Code (MCP Client)
+  - MCP Client Config
 - **Outbound**:
   - Next.js Dev Server（`nextjs_runtime` ツール、Phase 3で有効化）
   - Next.js 公式ドキュメント（`nextjs_docs` ツール）
@@ -691,19 +689,19 @@ type NextDevtoolsError =
 
 **Responsibility & Boundaries**
 
-- **Primary Responsibility**: Claude Desktop / Claude CLI が複数の MCP サーバー（dev3000 MCP, Next.js Devtools MCP）に接続するための設定を管理する
+- **Primary Responsibility**: Claude Code が複数の MCP サーバー（dev3000 MCP, Next.js Devtools MCP）に接続するための設定を管理する
 - **Domain Boundary**: MCP クライアント設定レイヤー
-- **Data Ownership**: MCP サーバー接続情報（JSON設定ファイル）
-- **Transaction Boundary**: 設定ファイル読み込み時（Claude Desktop起動時）
+- **Data Ownership**: MCP サーバー接続情報（設定ファイル）
+- **Transaction Boundary**: 設定ファイル読み込み時（Claude Code起動時）
 
 **Dependencies**
 
-- **Inbound**: Claude Desktop / Claude CLI（アプリケーション起動時に読み込み）
+- **Inbound**: Claude Code（アプリケーション起動時に読み込み）
 - **Outbound**:
   - dev3000 MCP Server (http://localhost:3684/mcp)
   - Next.js Devtools MCP Server (npx next-devtools-mcp@latest)
 - **External**:
-  - Claude Desktop / Claude CLI
+  - Claude Code
   - MCP プロトコル仕様
 
 **Contract Definition**
@@ -739,26 +737,26 @@ interface MCPClientConfig {
 ```
 
 - **Preconditions**:
-  - 設定ファイルが正しいパスに配置済み（macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`）
+  - 設定ファイルが正しく配置済み
   - dev3000 が起動中（dev3000 MCP Server への接続時）
   - npx が利用可能（Next.js Devtools MCP 起動時）
 - **Postconditions**:
-  - Claude Desktop 起動時に両方の MCP サーバーに接続
-  - 接続失敗時はエラーメッセージを表示（UI上で通知）
+  - Claude Code 起動時に両方の MCP サーバーに接続
+  - 接続失敗時はエラーメッセージを表示
 - **Invariants**:
-  - 設定ファイルの変更後は Claude Desktop の再起動が必要
+  - 設定ファイルの変更後は Claude Code の再起動が必要
 
 **State Management**:
 
 - **State Model**:
   - `DISCONNECTED`: MCP サーバー未起動または接続失敗
   - `CONNECTED`: MCP サーバーに接続中、ツール利用可能
-- **Persistence**: JSON ファイル（`claude_desktop_config.json`）
-- **Concurrency**: 単一プロセス（Claude Desktop）からのみアクセス
+- **Persistence**: 設定ファイル
+- **Concurrency**: 単一プロセス（Claude Code）からのみアクセス
 
 **Integration Strategy**:
 
-- **Modification Approach**: 既存の `claude_desktop_config.json` が存在する場合は `mcpServers` セクションに追記
+- **Modification Approach**: 既存の MCP 設定ファイルが存在する場合は `mcpServers` セクションに追記
 - **Backward Compatibility**: 他の MCP サーバー設定（filesystem, github など）は保持
 - **Migration Path**:
   1. 手動設定（Phase 1）: ユーザーが `/docs/DEBUG_SETUP.md` の手順に従って設定
@@ -1362,7 +1360,7 @@ interface ErrorLog extends TimelineEvent {
 自動化困難なシナリオは手動検証とする。
 
 9. **Claude Code End-to-End Flow**:
-   - Claude Desktop で MCP サーバー接続を確認
+   - Claude Code で MCP サーバー接続を確認
    - "fix my app" とプロンプト → dev3000 タイムラインデータが返されることを確認
    - AI の診断結果が有用であることを検証（主観的評価）
 
@@ -1492,7 +1490,7 @@ graph LR
 
 1. dev3000 グローバルインストール: `pnpm install -g dev3000`
 2. `package.json` に `"dev:debug"` スクリプト追加
-3. MCP Client Config 作成（`claude_desktop_config.json`）
+3. MCP Client Config 作成
 4. README.md に概要セクション追加
 5. `/docs/DEBUG_SETUP.md` 作成（Phase 1 の内容のみ）
 
@@ -1500,7 +1498,7 @@ graph LR
 
 - `pnpm dev:debug` で Next.js Dev Server と Timeline Dashboard が起動
 - `http://localhost:3684/logs` でタイムラインが表示される
-- Claude Desktop で dev3000 MCP Server に接続可能
+- Claude Code で dev3000 MCP Server に接続可能
 
 **Rollback Triggers**:
 
@@ -1511,7 +1509,7 @@ graph LR
 **Rollback Procedure**:
 
 1. `package.json` から `"dev:debug"` スクリプト削除
-2. `claude_desktop_config.json` から dev3000 MCP Server エントリ削除
+2. MCP 設定ファイルから dev3000 MCP Server エントリ削除
 3. dev3000 アンインストール: `pnpm uninstall -g dev3000`
 
 #### Phase 2: Chrome Extension Mode + LIFF 対応デバッグ戦略

@@ -10,18 +10,18 @@
   - _Requirements: 2.1, 4.1, 4.2_
 
 - [ ] 1.1 MCP Client設定ファイルの作成
-  - Claude Desktop用のMCP設定ファイル（claude_desktop_config.json）のスキーマを定義する
+  - MCP設定ファイルのスキーマを定義する
   - dev3000 MCP Serverへの接続設定（URL: http://localhost:3684/mcp）を追加する
   - 設定ファイルが正しいJSON形式であることを検証する
   - MCP Serverの接続が正常に確立されることを確認する
-  - _Requirements: 3.1, 5.1, 5.2, 5.4_
+  - _Requirements: 3.1, 5.1, 5.2_
 
 - [ ] 1.2 基本ドキュメントの作成
   - README.mdに「Debugging with AI Tools」セクションを追加し、dev3000の概要とクイックスタートコマンドを記載する
   - /docs/DEBUG_SETUP.mdを新規作成し、dev3000のインストール手順、使用方法、MCP統合の説明を含める
   - dev3000のグローバルインストールコマンド（`pnpm install -g dev3000`）を明記する
   - タイムラインダッシュボードのURL（`http://localhost:3684/logs`）へのアクセス方法を説明する
-  - MCP統合がZero Configurationで動作することを明示する（Claude Codeが自動的にdev3000 MCP Serverにアクセス可能）
+  - Claude Codeがdev3000 MCP Serverにアクセス可能であることを明示する
   - _Requirements: 4.4, 6.1, 6.2, 6.5_
 
 - [ ] 2. dev3000タイムライン記録機能の検証
@@ -89,11 +89,11 @@
 
 - [ ] 6. 統合テストとE2Eフローの検証
   - `pnpm dev:debug`実行後、Next.js Dev ServerとTimeline Dashboardが正常起動することを確認する
-  - Claude DesktopでMCP Server接続が確立され、利用可能なツールがリストアップされることを検証する
+  - Claude CodeでMCP Server接続が確立され、利用可能なツールがリストアップされることを検証する
   - 意図的にエラーを発生させ、Timeline Dashboardでエラーログが記録されることを確認する
   - Claude Codeから「fix my app」とプロンプトし、AIが診断結果を返すことを検証する
   - E2Eテスト失敗時のスクリーンショットとログがタイムラインに記録されることを確認する
-  - _Requirements: 2.5, 3.2, 5.4, 6.3_
+  - _Requirements: 2.5, 3.2, 5.2, 6.3_
 
 - [ ] 6.1 パフォーマンス監視とメトリクス測定
   - dev3000なし/ありでNext.js Dev Serverのレスポンスタイムを測定し、オーバーヘッドが10%以内であることを確認する

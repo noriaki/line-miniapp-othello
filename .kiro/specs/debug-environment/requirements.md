@@ -107,17 +107,15 @@ LINE Mini App Reversi プロジェクトにおける AI 支援開発を強化す
 4. WHEN 開発者が `package.json` scripts を確認する THEN Development Environment SHALL 各デバッグツールの起動方法と使い分けをコメントまたは README で明示する
 5. IF Next.js Devtools MCP と dev3000 MCP が同時に起動している THEN Development Environment SHALL 両方の MCP サーバーが異なるポートで競合なく動作する
 
-### Requirement 5: MCP クライアント設定（Claude Desktop/CLI）
+### Requirement 5: MCP クライアント設定（Claude Code）
 
-**Objective:** 開発者として、Claude Desktop または Claude CLI から MCP サーバーに接続できるようにしたい。そうすることで、AI デバッグ支援を実際に利用可能にする。
+**Objective:** 開発者として、Claude Code から MCP サーバーに接続できるようにしたい。そうすることで、AI デバッグ支援を実際に利用可能にする。
 
 #### Acceptance Criteria (Requirement 5)
 
 1. WHEN 開発者が MCP サーバー設定ファイルを作成する THEN MCP Client Configuration SHALL Next.js Devtools MCP と dev3000 MCP の両方のエントリを含む
-2. WHERE Claude Desktop を使用する THEN MCP Client Configuration SHALL `~/Library/Application Support/Claude/claude_desktop_config.json` に設定を配置する
-3. WHERE Claude CLI を使用する THEN MCP Client Configuration SHALL `.clauderc` または環境変数で MCP サーバーを指定する
-4. WHEN MCP サーバーが正しく設定されている THEN Claude Code SHALL 接続時に Next.js Devtools と dev3000 の両方のツールをリストアップする
-5. IF MCP サーバーへの接続が失敗する THEN MCP Client Configuration SHALL エラーメッセージにサーバーの起動状態、ポート、設定ファイルパスを含む診断情報を表示する
+2. WHEN MCP サーバーが正しく設定されている THEN Claude Code SHALL 接続時に Next.js Devtools と dev3000 の両方のツールをリストアップする
+3. IF MCP サーバーへの接続が失敗する THEN MCP Client Configuration SHALL エラーメッセージにサーバーの起動状態、ポート、設定ファイルパスを含む診断情報を表示する
 
 ### Requirement 6: ドキュメントと使用ガイド
 
