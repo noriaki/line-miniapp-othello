@@ -38,13 +38,16 @@ pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:3030](http://localhost:3030) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Development Commands
 
 ```bash
-# Development server
+# Development server (http://localhost:3000)
 pnpm dev
+
+# Development server with debugging (http://localhost:3030)
+pnpm dev:debug
 
 # Production build (Static Export)
 pnpm build
