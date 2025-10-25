@@ -30,10 +30,10 @@
 **Example**:
 
 - `/src/lib/game/`: ゲームドメインロジック(Pure Functions)
-- `/src/lib/ai/`: AI Engine、WASM統合
+- `/src/lib/ai/`: AI Engine、WASM統合、Fallback機能
 - `/src/workers/`: Web Worker(WASM実行隔離)
-- `/src/components/`: UIコンポーネント(将来的に実装)
-- `/src/hooks/`: カスタムReact Hooks(将来的に実装)
+- `/src/components/`: UIコンポーネント(GameBoard, ErrorBoundary, WASMErrorHandler)
+- `/src/hooks/`: カスタムReact Hooks(useGameState, useAIPlayer, useGameErrorHandler)
 
 ### Game Logic (`/src/lib/game/`)
 
@@ -51,14 +51,15 @@
 ### AI Engine (`/src/lib/ai/`)
 
 **Location**: `/src/lib/ai/`
-**Purpose**: WASM統合・メモリ管理・データ変換
+**Purpose**: WASM統合・メモリ管理・データ変換・フォールバック機能
 **Example**:
 
 - `types.ts`: WASM型定義・エラー型(Result型パターン)
 - `ai-engine.ts`: 高レベルAPI(initialize, calculateMove)
 - `wasm-bridge.ts`: WASM低レベル操作(encodeBoard, callAIFunction)
 - `wasm-loader.ts`: WASMロード・初期化
-- `__tests__/`: 統合テスト
+- `ai-fallback.ts`: WASM失敗時のフォールバックAI(ランダム手)
+- `__tests__/`: 統合テスト、フォールバックテスト
 
 ### Web Workers (`/src/workers/`)
 
@@ -67,6 +68,39 @@
 **Example**:
 
 - `ai-worker.ts`: Worker thread、WASM計算実行、Message通信
+
+### UI Components (`/src/components/`)
+
+**Location**: `/src/components/`
+**Purpose**: Client Components、ゲームUI、エラーハンドリング
+**Example**:
+
+- `GameBoard.tsx`: メインゲームボードUI、ユーザー操作管理
+- `ErrorBoundary.tsx`: Reactエラー境界、クラッシュ回復
+- `WASMErrorHandler.tsx`: WASM固有エラーUI
+- `__tests__/`: コンポーネントテスト
+
+### Custom Hooks (`/src/hooks/`)
+
+**Location**: `/src/hooks/`
+**Purpose**: 状態管理・ロジック分離・再利用性
+**Example**:
+
+- `useGameState.ts`: ゲーム状態管理(board, player, validMoves)
+- `useAIPlayer.ts`: AI計算実行・Worker通信
+- `useGameErrorHandler.ts`: エラー状態・メッセージ管理
+- `__tests__/`: フックテスト
+
+### E2E Tests (`/e2e/`)
+
+**Location**: `/e2e/`
+**Purpose**: Playwrightエンドツーエンドテスト
+**Example**:
+
+- `game-flow.spec.ts`: ゲームフロー全体テスト
+- `ai-game.spec.ts`: AI対戦シナリオテスト
+- `responsive.spec.ts`: レスポンシブデザインテスト
+- `wasm-error.spec.ts`: WASMエラーハンドリングテスト
 
 ### Specifications & Settings (`/.kiro/`)
 
@@ -77,6 +111,14 @@
 - `/steering/`: プロジェクトメモリ(この文書含む)
 - `/specs/`: 機能仕様書(Requirements, Design, Tasks)
 - `/settings/`: ルール・テンプレート
+
+### Documentation (`/docs/`)
+
+**Location**: `/docs/`
+**Purpose**: プロジェクトドキュメント
+**Example**:
+
+- `DEBUG_SETUP.md`: dev3000デバッグ環境セットアップガイド
 
 ## Naming Conventions
 
@@ -121,8 +163,17 @@ import { validateMove } from './move-validator';
 ### Test Co-location
 
 - `__tests__/`ディレクトリを実装と同階層に配置
-- テストファイル名: `<module>.test.ts`形式
+- ユニット/統合テスト: `<module>.test.ts`形式
+- E2Eテスト: `/e2e/<feature>.spec.ts`形式(Playwright)
+
+### Error Recovery Pattern
+
+- **エラー境界**: ErrorBoundaryで最上位キャッチ
+- **フォールバック**: ai-fallbackでWASM失敗時の代替
+- **状態管理**: useGameErrorHandlerでエラー状態一元管理
+- UIクラッシュ防止と継続的なUX提供
 
 ---
 
 _created_at: 2025-10-21_
+_updated_at: 2025-10-25_
