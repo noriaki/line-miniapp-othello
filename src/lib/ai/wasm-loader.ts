@@ -42,10 +42,32 @@ export async function loadWASM(
     // Examples: '/ai.wasm' -> '/ai.js', '/path/to/ai.wasm' -> '/path/to/ai.js'
     const jsPath = wasmPath.replace(/\.wasm$/, '.js');
 
+    // Convert to absolute URL for importScripts
+    // importScripts requires absolute URLs in Web Worker context
+    // Use origin instead of self.location.href to handle blob: URLs correctly
+    const origin = self.location.origin;
+    const absoluteJsUrl = origin + jsPath;
+    const absoluteWasmUrl = origin + wasmPath;
+
+    // Pre-configure Emscripten Module to override locateFile
+    // This ensures that ai.wasm is always loaded from the correct path,
+    // regardless of where ai.js is served from
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (self as any).Module = {
+      locateFile: (path: string) => {
+        // For ai.wasm, always use the absolute wasmPath
+        if (path === 'ai.wasm') {
+          return absoluteWasmUrl;
+        }
+        // For other files, return as-is
+        return path;
+      },
+    };
+
     try {
       // Load Emscripten glue code (ai.js)
-      // This will create a global Module object
-      importScripts(jsPath);
+      // This will merge with the pre-configured Module object
+      importScripts(absoluteJsUrl);
     } catch (importError) {
       return {
         success: false,
@@ -60,11 +82,15 @@ export async function loadWASM(
       };
     }
 
-    // Check if Module is available
+    // Check if Module is available and has required Emscripten functions
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const Module = (self as any).Module as EmscriptenModule | undefined;
 
-    if (!Module) {
+    if (
+      !Module ||
+      typeof Module._malloc !== 'function' ||
+      typeof Module._free !== 'function'
+    ) {
       return {
         success: false,
         error: {
@@ -84,6 +110,18 @@ export async function loadWASM(
 
       // Set the callback
       Module.onRuntimeInitialized = () => {
+        // In Web Worker context, Emscripten creates HEAP views as global variables
+        // We need to copy them to the Module object for our code to access them
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const globalScope = self as any;
+        Module.HEAP8 = globalScope.HEAP8;
+        Module.HEAPU8 = globalScope.HEAPU8;
+        Module.HEAP32 = globalScope.HEAP32;
+        Module.HEAPU32 = globalScope.HEAPU32;
+        Module.memory = globalScope.wasmMemory || {
+          buffer: Module.HEAP8?.buffer,
+        };
+
         clearTimeout(timeout);
         resolve();
       };

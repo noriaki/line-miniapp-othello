@@ -4,7 +4,11 @@ import React, { useCallback, useEffect } from 'react';
 import { useGameState } from '@/hooks/useGameState';
 import { useAIPlayer } from '@/hooks/useAIPlayer';
 import { useGameErrorHandler } from '@/hooks/useGameErrorHandler';
-import { applyMove, validateMove } from '@/lib/game/game-logic';
+import {
+  applyMove,
+  validateMove,
+  calculateValidMoves,
+} from '@/lib/game/game-logic';
 import { checkGameEnd } from '@/lib/game/game-end';
 import type { Position } from '@/lib/game/types';
 import './GameBoard.css';
@@ -72,13 +76,19 @@ export default function GameBoard(): JSX.Element {
 
       updateBoard(applyResult.value);
 
-      // Check game end
-      const aiValidMoves = validMoves;
-      const userValidMoves = validMoves;
+      // Check game end - calculate valid moves for both players on new board
+      const blackValidMovesAfter = calculateValidMoves(
+        applyResult.value,
+        'black'
+      );
+      const whiteValidMovesAfter = calculateValidMoves(
+        applyResult.value,
+        'white'
+      );
       const endResult = checkGameEnd(
         applyResult.value,
-        userValidMoves,
-        aiValidMoves
+        blackValidMovesAfter,
+        whiteValidMovesAfter
       );
 
       if (endResult.ended) {
@@ -123,8 +133,20 @@ export default function GameBoard(): JSX.Element {
         if (applyResult.success) {
           updateBoard(applyResult.value);
 
-          // Check game end
-          const endResult = checkGameEnd(applyResult.value, [], []);
+          // Check game end - calculate valid moves for both players on new board
+          const blackValidMovesAfter = calculateValidMoves(
+            applyResult.value,
+            'black'
+          );
+          const whiteValidMovesAfter = calculateValidMoves(
+            applyResult.value,
+            'white'
+          );
+          const endResult = checkGameEnd(
+            applyResult.value,
+            blackValidMovesAfter,
+            whiteValidMovesAfter
+          );
           if (endResult.ended) {
             updateGameStatus({
               type: 'finished',

@@ -66,7 +66,26 @@ export function encodeBoard(
   }
 
   // Access memory as Int32Array
-  const heap = new Int32Array(module.HEAP32.buffer, boardPtr, 64);
+  // Try multiple sources for buffer in Web Worker context
+  const buffer =
+    module.memory?.buffer ||
+    module.HEAP32?.buffer ||
+    module.HEAPU8?.buffer ||
+    module.HEAP8?.buffer;
+
+  if (!buffer) {
+    module._free(boardPtr);
+    return {
+      success: false,
+      error: {
+        type: 'encode_error',
+        reason: 'memory_allocation_failed',
+        message: 'WASM memory buffer not accessible',
+      },
+    };
+  }
+
+  const heap = new Int32Array(buffer, boardPtr, 64);
 
   // Encode board to WASM memory
   for (let row = 0; row < 8; row++) {

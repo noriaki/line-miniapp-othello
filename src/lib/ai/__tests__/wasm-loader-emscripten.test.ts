@@ -45,6 +45,17 @@ describe('loadWASM - Emscripten Integration', () => {
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (global as any).Module;
+    // Clean up global HEAP variables
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (global as any).HEAP8;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (global as any).HEAPU8;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (global as any).HEAP32;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (global as any).HEAPU32;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (global as any).wasmMemory;
   });
 
   it('should load WASM via Emscripten Module in Web Worker context', async () => {
@@ -68,8 +79,8 @@ describe('loadWASM - Emscripten Integration', () => {
 
     const result = await loadWASM('/ai.wasm');
 
-    // Should call importScripts with ai.js path
-    expect(mockImportScripts).toHaveBeenCalledWith('/ai.js');
+    // Should call importScripts with absolute ai.js URL
+    expect(mockImportScripts).toHaveBeenCalledWith('http://localhost/ai.js');
 
     // Should successfully return Module
     expect(result.success).toBe(true);
@@ -85,31 +96,29 @@ describe('loadWASM - Emscripten Integration', () => {
     let callbackWasSet = false;
 
     const mockImportScripts = jest.fn().mockImplementation(() => {
-      // Create emscripten module without _malloc initially to simulate uninitialized state
-      const uninitializedEmscriptenModule = {
+      // Create emscripten module with _malloc/_free present (Module loaded state)
+      // but without explicit runtime initialization
+      const emscriptenModule = {
         _init_ai: jest.fn(),
         _calc_value: jest.fn(),
         _resume: jest.fn(),
         _stop: jest.fn(),
+        _malloc: jest.fn(), // Present from module load, not runtime init
+        _free: jest.fn(), // Present from module load, not runtime init
         memory: {} as WebAssembly.Memory,
         HEAP8: new Int8Array(64),
         HEAPU8: new Uint8Array(64),
         HEAP32: new Int32Array(64),
-        _malloc: undefined as unknown as (size: number) => number,
-        _free: undefined as unknown as (ptr: number) => void,
         set onRuntimeInitialized(callback: () => void) {
           callbackWasSet = true;
-          // Simulate async initialization with nextTick
+          // Simulate async runtime initialization with nextTick
           process.nextTick(() => {
-            // Populate functions to simulate runtime initialization
-            uninitializedEmscriptenModule._malloc = jest.fn();
-            uninitializedEmscriptenModule._free = jest.fn();
             callback();
           });
         },
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (global as any).Module = uninitializedEmscriptenModule;
+      (global as any).Module = emscriptenModule;
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -152,6 +161,10 @@ describe('loadWASM - Emscripten Integration', () => {
   });
 
   it('should return error when Module is not available after importScripts', async () => {
+    // Ensure Module is not set
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (global as any).Module;
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).importScripts = jest.fn(); // No Module set
 
@@ -240,12 +253,21 @@ describe('loadWASM - Emscripten Integration', () => {
     (global as any).importScripts = mockImportScripts;
 
     await loadWASM('/ai.wasm');
-    expect(mockImportScripts).toHaveBeenNthCalledWith(1, '/ai.js');
+    expect(mockImportScripts).toHaveBeenNthCalledWith(
+      1,
+      'http://localhost/ai.js'
+    );
 
     await loadWASM('/path/to/ai.wasm');
-    expect(mockImportScripts).toHaveBeenNthCalledWith(2, '/path/to/ai.js');
+    expect(mockImportScripts).toHaveBeenNthCalledWith(
+      2,
+      'http://localhost/path/to/ai.js'
+    );
 
     await loadWASM('ai.wasm');
-    expect(mockImportScripts).toHaveBeenNthCalledWith(3, 'ai.js');
+    expect(mockImportScripts).toHaveBeenNthCalledWith(
+      3,
+      'http://localhostai.js'
+    );
   });
 });
