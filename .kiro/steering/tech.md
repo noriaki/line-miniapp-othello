@@ -22,7 +22,8 @@
 - **Styling**: Tailwind CSS + CSS Modules
 - **Package Manager**: pnpm 9.x
 - **LINE Integration**: LIFF SDK 2.x
-- **Testing**: Jest + React Testing Library
+- **Testing**: Jest + React Testing Library + Playwright (E2E)
+- **Debug Tools**: dev3000 (MCP server for AI-assisted debugging)
 
 ## Development Standards
 
@@ -46,9 +47,10 @@ type Result<T, E> = { success: true; value: T } | { success: false; error: E };
 
 ### Testing
 
-- Jest: ユニット・統合テスト
-- GameLogicレイヤー: 90%以上カバレッジ目標
-- Pure Functionsを重視(テスタビリティ向上)
+- **Jest**: ユニット・統合テスト、GameLogicレイヤー90%以上カバレッジ目標
+- **Playwright**: E2E テスト(game-flow, AI対戦, responsive, WASM error)
+- **Pure Functions重視**: テスタビリティ向上
+- **Multi-device Testing**: Desktop Chrome, Mobile Chrome, Mobile Safari
 
 ## Development Environment
 
@@ -62,13 +64,16 @@ type Result<T, E> = { success: true; value: T } | { success: false; error: E };
 
 ```bash
 # Dev
-pnpm dev
+pnpm dev                 # 通常開発モード
+pnpm dev:debug           # デバッグモード (dev3000 + MCP server)
 
 # Build (Static Export)
 pnpm build
 
 # Test
-pnpm test
+pnpm test                # Jestユニットテスト
+pnpm test:e2e            # Playwright E2Eテスト
+pnpm test:coverage       # カバレッジ付きテスト
 
 # Lint & Format
 pnpm lint
@@ -101,6 +106,21 @@ pnpm format
 - Board状態は常に新しいインスタンス生成(Immutable pattern)
 - 理由: React State更新の整合性保証、バグ防止
 
+### Error Handling & Resilience
+
+- **Result型パターン**: WASM境界でのエラー伝搬
+- **AI Fallback**: WASM初期化失敗時のフォールバック機能(ai-fallback.ts)
+- **Error Boundary**: UIレベルでのエラー回復(ErrorBoundary.tsx)
+- 理由: WebAssembly統合の不確実性への対応、UX維持
+
+### Debug & Development Tools
+
+- **dev3000**: サーバー/ブラウザイベント統合タイムライン記録
+- **MCP Server**: Claude Code (CLI)によるAI支援デバッグ
+- **通常開発との分離**: `pnpm dev` (軽量) vs `pnpm dev:debug` (包括的)
+- 理由: 問題発生時の診断効率化、通常開発のオーバーヘッド回避
+
 ---
 
 _created_at: 2025-10-21_
+_updated_at: 2025-10-25_
