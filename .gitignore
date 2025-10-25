@@ -143,3 +143,7 @@ vite.config.ts.timestamp-*
 
 # Analysis temporary directory
 .analysis/
+
+# Playwright
+playwright-report/
+test-results/
