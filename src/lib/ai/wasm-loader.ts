@@ -106,6 +106,18 @@ export async function loadWASM(
 
       // Set the callback
       Module.onRuntimeInitialized = () => {
+        // In Web Worker context, Emscripten creates HEAP views as global variables
+        // We need to copy them to the Module object for our code to access them
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const globalScope = self as any;
+        Module.HEAP8 = globalScope.HEAP8;
+        Module.HEAPU8 = globalScope.HEAPU8;
+        Module.HEAP32 = globalScope.HEAP32;
+        Module.HEAPU32 = globalScope.HEAPU32;
+        Module.memory = globalScope.wasmMemory || {
+          buffer: Module.HEAP8?.buffer,
+        };
+
         clearTimeout(timeout);
         resolve();
       };
