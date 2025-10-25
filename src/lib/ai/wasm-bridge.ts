@@ -66,7 +66,8 @@ export function encodeBoard(
   }
 
   // Access memory as Int32Array
-  const heap = new Int32Array(module.HEAP32.buffer, boardPtr, 64);
+  // Use module.HEAPU8.buffer which is always available after runtime initialization
+  const heap = new Int32Array(module.HEAPU8.buffer, boardPtr, 64);
 
   // Encode board to WASM memory
   for (let row = 0; row < 8; row++) {
