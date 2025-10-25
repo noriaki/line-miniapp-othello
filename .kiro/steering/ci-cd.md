@@ -132,6 +132,7 @@ Standard automation commands:
 ```json
 {
   "dev": "next dev", // Local development server
+  "dev:debug": "dev3000 -p 3030 --command 'next dev -p 3030'", // Debug mode with dev3000
   "build": "next build", // Production build
   "start": "next start", // Production server
   "lint": "eslint .", // ESLint check
@@ -141,6 +142,7 @@ Standard automation commands:
   "test": "jest", // Run tests
   "test:watch": "jest --watch", // Watch mode
   "test:coverage": "jest --coverage", // With coverage
+  "test:e2e": "playwright test", // E2E tests (Playwright)
   "prepare": "husky" // Initialize hooks
 }
 ```
@@ -331,6 +333,29 @@ git add pnpm-lock.yaml
 
 ---
 
+## Debug & Development Tools
+
+**dev3000 Integration**:
+
+- **Purpose**: Comprehensive development timeline recording (server + browser events)
+- **Trigger**: `pnpm dev:debug` (separate from normal development)
+- **Features**:
+  - Timeline Dashboard (`http://localhost:3684/logs`)
+  - MCP Server for Claude Code (CLI) AI-assisted debugging
+  - Automated browser monitoring via Playwright
+  - Screenshots, console logs, network requests
+- **Workflow**: Normal dev (`pnpm dev`) for speed, debug mode for problem diagnosis
+
+**Why Separate Debug Mode?**
+
+- Avoids overhead during normal development
+- Provides powerful diagnostics when needed
+- AI integration via MCP for context-aware debugging
+- Full event history for complex bug reproduction
+
+---
+
 **Key Takeaway**: Quality gates at every layer (hooks → CI → review) with AI augmentation, ensuring issues caught early and development flow stays fast.
 
 _Created: 2025-10-21_
+_Updated: 2025-10-25_
