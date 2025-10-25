@@ -28,6 +28,16 @@ LINEミニアプリプラットフォーム上で動作するリバーシ(オセ
 - ゲーム履歴の永続化やランキング
 - 将来的な機能拡張(初期リリースはシンプルに集中)
 
+## Current Implementation Status
+
+- **LINE統合**: 現在はスタンドアロンWebアプリとして実装。LIFF SDK統合は将来的な拡張として計画中
+- **Focus**: ゲームロジック、AI統合、レスポンシブUIの完成度優先
+
 ---
 
 _created_at: 2025-10-21_
+_updated_at: 2025-10-26_
+
+**Recent Updates (2025-10-26)**:
+
+- Clarified LINE integration current status (standalone web app, LIFF SDK planned for future)

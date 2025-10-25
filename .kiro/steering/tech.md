@@ -21,9 +21,9 @@
 
 - **Styling**: Tailwind CSS + CSS Modules
 - **Package Manager**: pnpm 9.x
-- **LINE Integration**: LIFF SDK 2.x
 - **Testing**: Jest + React Testing Library + Playwright (E2E)
 - **Debug Tools**: dev3000 (MCP server for AI-assisted debugging)
+- **LINE Integration**: LIFF SDK 2.x (planned, not yet implemented)
 
 ## Development Standards
 
@@ -49,8 +49,9 @@ type Result<T, E> = { success: true; value: T } | { success: false; error: E };
 
 - **Jest**: ユニット・統合テスト、GameLogicレイヤー90%以上カバレッジ目標
 - **Playwright**: E2E テスト(game-flow, AI対戦, responsive, WASM error)
-- **Pure Functions重視**: テスタビリティ向上
 - **Multi-device Testing**: Desktop Chrome, Mobile Chrome, Mobile Safari
+- **Test Modes**: UI mode、headed mode、プロジェクト別実行(chromium/mobile特化)
+- **Pure Functions重視**: テスタビリティ向上
 
 ## Development Environment
 
@@ -72,7 +73,10 @@ pnpm build
 
 # Test
 pnpm test                # Jestユニットテスト
-pnpm test:e2e            # Playwright E2Eテスト
+pnpm test:e2e            # Playwright E2Eテスト (全デバイス)
+pnpm test:e2e:ui         # Playwright UIモード
+pnpm test:e2e:chromium   # Desktop Chromeのみ
+pnpm test:e2e:mobile     # Mobile Chrome/Safari
 pnpm test:coverage       # カバレッジ付きテスト
 
 # Lint & Format
@@ -123,4 +127,9 @@ pnpm format
 ---
 
 _created_at: 2025-10-21_
-_updated_at: 2025-10-25_
+_updated_at: 2025-10-26_
+
+**Recent Updates (2025-10-26)**:
+
+- Added documentation for additional E2E test modes (UI, headed, project-specific)
+- Clarified LIFF SDK status (planned but not yet implemented)
