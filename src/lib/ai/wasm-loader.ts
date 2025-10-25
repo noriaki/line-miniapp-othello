@@ -82,11 +82,15 @@ export async function loadWASM(
       };
     }
 
-    // Check if Module is available
+    // Check if Module is available and has required Emscripten functions
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const Module = (self as any).Module as EmscriptenModule | undefined;
 
-    if (!Module) {
+    if (
+      !Module ||
+      typeof Module._malloc !== 'function' ||
+      typeof Module._free !== 'function'
+    ) {
       return {
         success: false,
         error: {
