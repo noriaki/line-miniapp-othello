@@ -14,35 +14,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-
-// Type definition for Egaroucid WASM Module
-interface EgaroucidWASMModule {
-  // Exported functions from C++
-  _init_ai(percentagePtr: number): number;
-  _ai_js(boardPtr: number, level: number, ai_player: number): number;
-  _calc_value(
-    boardPtr: number,
-    resPtr: number,
-    level: number,
-    ai_player: number
-  ): void;
-  _stop(): void;
-  _resume(): void;
-
-  // Emscripten standard exports
-  _malloc(size: number): number;
-  _free(ptr: number): void;
-
-  // Memory access
-  memory: WebAssembly.Memory;
-  HEAP8: Int8Array;
-  HEAPU8: Uint8Array;
-  HEAP32: Int32Array;
-  HEAPU32: Uint32Array;
-
-  // Emscripten runtime initialization
-  onRuntimeInitialized?: () => void;
-}
+import type { EgaroucidWASMModule } from '../types';
 
 describe('WASM Integration Tests - Task 5.1: Module Loading', () => {
   const RESOURCES_DIR = path.join(

@@ -34,6 +34,7 @@ const createMockModule = (): EgaroucidWASMModule => {
     HEAP8: new Int8Array(memory),
     HEAPU8: new Uint8Array(memory),
     HEAP32: new Int32Array(memory),
+    HEAPU32: new Uint32Array(memory),
   };
 };
 

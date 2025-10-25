@@ -7,16 +7,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-
-// Type definition for Egaroucid WASM Module
-interface EgaroucidWASMModule {
-  _init_ai(percentagePtr: number): number;
-  _ai_js(boardPtr: number, level: number, ai_player: number): number;
-  _malloc(size: number): number;
-  _free(ptr: number): void;
-  HEAP32: Int32Array;
-  onRuntimeInitialized?: () => void;
-}
+import type { EgaroucidWASMModule } from '../types';
 
 describe('Integration Test: AIEngine + WASMBridge', () => {
   const RESOURCES_DIR = path.join(

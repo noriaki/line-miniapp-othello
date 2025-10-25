@@ -26,7 +26,7 @@ export interface EgaroucidWASMModule {
   // - policy: bit position (0-63)
   // - value: evaluation score
   // - ai_player: 0=black, 1=white
-  _ai_js?(boardPtr: number, level: number, ai_player: number): number;
+  _ai_js(boardPtr: number, level: number, ai_player: number): number;
 
   // Alternative AI calculation (evaluation function for all legal moves)
   // Signature: _calc_value(boardPtr: number, resPtr: number, level: number, ai_player: number): void
@@ -51,6 +51,10 @@ export interface EgaroucidWASMModule {
   HEAP8: Int8Array;
   HEAPU8: Uint8Array;
   HEAP32: Int32Array;
+  HEAPU32: Uint32Array;
+
+  // Emscripten runtime initialization callback
+  onRuntimeInitialized?: () => void;
 }
 
 /**
