@@ -1,0 +1,22 @@
+{
+  "feature_name": "score-ui-optimization",
+  "created_at": "2025-10-26T22:12:19Z",
+  "updated_at": "2025-10-27T00:30:15Z",
+  "language": "ja",
+  "phase": "tasks-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

@@ -404,20 +404,22 @@ export default function GameBoard(): JSX.Element {
                 data-testid="default-profile-icon"
               />
             )}
-            <div className="flex flex-col items-center">
-              <span className="text-2xl font-bold">{blackCount}</span>
-              {/* Display profile name when logged in (Task 4.3) */}
-              {profile && (
-                <span className="text-xs text-gray-600 mt-1">
-                  {profile.displayName}
-                </span>
-              )}
-            </div>
+            <span
+              className="text-2xl font-bold"
+              aria-label={`Black score: ${blackCount}`}
+            >
+              {blackCount}
+            </span>
           </div>
           <div className="stone-count-divider">vs</div>
-          <div className="stone-count-item">
+          <div className="stone-count-item stone-count-item--reversed">
             <div className="stone-display stone-display-white" />
-            <span className="text-2xl font-bold">{whiteCount}</span>
+            <span
+              className="text-2xl font-bold"
+              aria-label={`White score: ${whiteCount}`}
+            >
+              {whiteCount}
+            </span>
           </div>
         </div>
       </div>
