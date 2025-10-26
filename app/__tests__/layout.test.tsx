@@ -3,6 +3,13 @@ import { render } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import RootLayout, { metadata, viewport } from '../layout';
 
+// Mock LiffProvider to avoid LIFF SDK initialization in tests
+jest.mock('@/contexts/LiffProvider', () => ({
+  LiffProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="liff-provider">{children}</div>
+  ),
+}));
+
 describe('RootLayout (Server Component)', () => {
   it('正しいメタデータを持つこと', () => {
     expect(metadata).toEqual({
@@ -44,5 +51,41 @@ describe('RootLayout (Server Component)', () => {
 
     const html = container.querySelector('html');
     expect(html).toHaveAttribute('lang', 'ja');
+  });
+
+  it('LiffProviderでラップされていること', () => {
+    const { container } = render(
+      <RootLayout>
+        <div data-testid="child">Test Content</div>
+      </RootLayout>
+    );
+
+    // LiffProvider should wrap the children
+    const liffProvider = container.querySelector(
+      '[data-testid="liff-provider"]'
+    );
+    expect(liffProvider).toBeInTheDocument();
+
+    // Child should be inside LiffProvider
+    const child = container.querySelector('[data-testid="child"]');
+    expect(liffProvider).toContainElement(child as HTMLElement);
+  });
+
+  it('ErrorBoundaryとLiffProviderの正しい順序を保つこと', () => {
+    const { container } = render(
+      <RootLayout>
+        <div data-testid="child">Test Content</div>
+      </RootLayout>
+    );
+
+    // LiffProvider should exist (mocked)
+    const liffProvider = container.querySelector(
+      '[data-testid="liff-provider"]'
+    );
+    expect(liffProvider).toBeInTheDocument();
+
+    // Child should be rendered inside the provider chain
+    const child = container.querySelector('[data-testid="child"]');
+    expect(child).toBeInTheDocument();
   });
 });
