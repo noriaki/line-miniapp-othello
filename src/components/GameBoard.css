@@ -69,6 +69,50 @@
   margin-top: 0.5rem;
 }
 
+/* Pass Button Styles (Task 2.2) */
+.pass-button {
+  min-width: 200px;
+  min-height: 44px;
+  padding: 12px 32px;
+  background-color: #06c755;
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(6, 199, 85, 0.3);
+  -webkit-tap-highlight-color: transparent;
+  margin-top: 1rem;
+}
+
+.pass-button:hover:not(:disabled) {
+  background-color: #05b34c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(6, 199, 85, 0.4);
+}
+
+.pass-button:active:not(:disabled) {
+  background-color: #049c43;
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(6, 199, 85, 0.3);
+}
+
+.pass-button:disabled {
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+  transform: none;
+}
+
+.pass-button:focus-visible {
+  outline: 3px solid #06c755;
+  outline-offset: 2px;
+}
+
 .board-cell {
   aspect-ratio: 1;
   background-color: #4a9932;

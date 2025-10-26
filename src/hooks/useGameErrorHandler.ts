@@ -19,10 +19,10 @@ interface UseGameErrorHandlerReturn {
   handleInvalidMove: (position: Position, reason: InvalidMoveReason) => void;
   getErrorMessage: () => string | null;
 
-  // Turn skip state
-  skipNotification: Player | null;
-  notifyTurnSkip: (player: Player) => void;
-  getSkipMessage: () => string | null;
+  // Pass notification state (replaces skip notification)
+  passNotification: Player | null;
+  notifyPass: (player: Player) => void;
+  getPassMessage: () => string | null;
 
   // Game state inconsistency
   hasInconsistency: boolean;
@@ -43,8 +43,8 @@ export function useGameErrorHandler(): UseGameErrorHandlerReturn {
   const [invalidMoveReason, setInvalidMoveReason] =
     useState<InvalidMoveReason | null>(null);
 
-  // Turn skip notification state
-  const [skipNotification, setSkipNotification] = useState<Player | null>(null);
+  // Pass notification state (replaces skip notification)
+  const [passNotification, setPassNotification] = useState<Player | null>(null);
 
   // Game state inconsistency state
   const [hasInconsistency, setHasInconsistency] = useState<boolean>(false);
@@ -53,7 +53,7 @@ export function useGameErrorHandler(): UseGameErrorHandlerReturn {
 
   // Timers for auto-clearing feedback
   const invalidMoveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const skipNotificationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const passNotificationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -61,8 +61,8 @@ export function useGameErrorHandler(): UseGameErrorHandlerReturn {
       if (invalidMoveTimerRef.current) {
         clearTimeout(invalidMoveTimerRef.current);
       }
-      if (skipNotificationTimerRef.current) {
-        clearTimeout(skipNotificationTimerRef.current);
+      if (passNotificationTimerRef.current) {
+        clearTimeout(passNotificationTimerRef.current);
       }
     };
   }, []);
@@ -112,38 +112,38 @@ export function useGameErrorHandler(): UseGameErrorHandlerReturn {
   }, [invalidMoveReason]);
 
   /**
-   * Notify turn skip
+   * Notify pass operation
    * Sets notification and auto-clears after 3 seconds
    */
-  const notifyTurnSkip = useCallback((player: Player) => {
+  const notifyPass = useCallback((player: Player) => {
     // Clear existing timer
-    if (skipNotificationTimerRef.current) {
-      clearTimeout(skipNotificationTimerRef.current);
+    if (passNotificationTimerRef.current) {
+      clearTimeout(passNotificationTimerRef.current);
     }
 
     // Set notification
-    setSkipNotification(player);
+    setPassNotification(player);
 
     // Auto-clear after 3 seconds
-    skipNotificationTimerRef.current = setTimeout(() => {
-      setSkipNotification(null);
+    passNotificationTimerRef.current = setTimeout(() => {
+      setPassNotification(null);
     }, 3000);
   }, []);
 
   /**
-   * Get skip notification message
+   * Get pass notification message
    */
-  const getSkipMessage = useCallback((): string | null => {
-    if (!skipNotification) {
+  const getPassMessage = useCallback((): string | null => {
+    if (!passNotification) {
       return null;
     }
 
-    if (skipNotification === 'black') {
-      return '有効な手がありません。あなたのターンをスキップします。';
+    if (passNotification === 'black') {
+      return '有効な手がありません。パスしました。';
     } else {
-      return '有効な手がありません。AIのターンをスキップします。';
+      return 'AIに有効な手がありません。AIがパスしました。';
     }
-  }, [skipNotification]);
+  }, [passNotification]);
 
   /**
    * Detect game state inconsistency
@@ -177,9 +177,9 @@ export function useGameErrorHandler(): UseGameErrorHandlerReturn {
     invalidMoveReason,
     handleInvalidMove,
     getErrorMessage,
-    skipNotification,
-    notifyTurnSkip,
-    getSkipMessage,
+    passNotification,
+    notifyPass,
+    getPassMessage,
     hasInconsistency,
     inconsistencyReason,
     detectInconsistency,
