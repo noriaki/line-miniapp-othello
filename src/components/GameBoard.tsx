@@ -34,6 +34,8 @@ export default function GameBoard(): JSX.Element {
     switchPlayer,
     updateGameStatus,
     setAIThinking,
+    incrementPassCount,
+    resetPassCount,
     resetGame,
   } = useGameState();
 
@@ -42,6 +44,7 @@ export default function GameBoard(): JSX.Element {
   const {
     handleInvalidMove,
     getErrorMessage,
+    notifyPass,
     getPassMessage,
     hasInconsistency,
     clearInconsistency,
@@ -57,6 +60,32 @@ export default function GameBoard(): JSX.Element {
     },
     [validMoves]
   );
+
+  // Handle pass operation (Task 3.1)
+  const handlePass = useCallback(async () => {
+    // Validate game state
+    if (gameStatus.type !== 'playing') {
+      console.error('Pass attempted while game is not in playing state', {
+        gameStatus,
+      });
+      return;
+    }
+
+    // Validate no valid moves exist
+    if (validMoves.length > 0) {
+      console.warn('Pass button clicked while valid moves exist');
+      return;
+    }
+
+    // Notify pass
+    notifyPass(currentPlayer);
+
+    // Increment pass count
+    incrementPassCount();
+
+    // Switch player
+    switchPlayer();
+  }, [gameStatus, currentPlayer, notifyPass, incrementPassCount, switchPlayer]);
 
   // Handle cell click
   const handleCellClick = useCallback(
@@ -75,6 +104,9 @@ export default function GameBoard(): JSX.Element {
       if (!applyResult.success) return;
 
       updateBoard(applyResult.value);
+
+      // Reset pass count on valid move (Task 3.3)
+      resetPassCount();
 
       // Check game end - calculate valid moves for both players on new board
       const blackValidMovesAfter = calculateValidMoves(
@@ -112,6 +144,7 @@ export default function GameBoard(): JSX.Element {
       switchPlayer,
       updateGameStatus,
       handleInvalidMove,
+      resetPassCount,
     ]
   );
 
@@ -132,6 +165,9 @@ export default function GameBoard(): JSX.Element {
         const applyResult = applyMove(board, move, currentPlayer);
         if (applyResult.success) {
           updateBoard(applyResult.value);
+
+          // Reset pass count on valid move (Task 3.3)
+          resetPassCount();
 
           // Check game end - calculate valid moves for both players on new board
           const blackValidMovesAfter = calculateValidMoves(
@@ -175,6 +211,7 @@ export default function GameBoard(): JSX.Element {
     switchPlayer,
     updateGameStatus,
     setAIThinking,
+    resetPassCount,
   ]);
 
   return (
@@ -285,6 +322,23 @@ export default function GameBoard(): JSX.Element {
           })
         )}
       </div>
+
+      {/* Pass Button (Task 2.1) */}
+      {gameStatus.type === 'playing' && (
+        <button
+          className="pass-button"
+          onClick={handlePass}
+          disabled={
+            validMoves.length > 0 || currentPlayer !== 'black' || isAIThinking
+          }
+          aria-label="ターンをパスする"
+          aria-disabled={
+            validMoves.length > 0 || currentPlayer !== 'black' || isAIThinking
+          }
+        >
+          パス
+        </button>
+      )}
 
       {/* Game Over Screen */}
       {gameStatus.type === 'finished' && (

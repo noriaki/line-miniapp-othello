@@ -147,17 +147,17 @@ describe('Integration Test: GameBoard + GameLogic', () => {
 
   it('should handle turn skip when no valid moves available', async () => {
     // このテストは特殊なボード状態を作る必要があるため、
-    // 実際のゲーム進行で自然にスキップが発生する状況を待つか、
+    // 実際のゲーム進行で自然にパスが発生する状況を待つか、
     // モックを使って状態を制御する必要がある
 
-    // 簡略版: スキップメッセージの表示確認のみ
+    // 簡略版: パスボタンの存在確認
     render(<GameBoard />);
 
-    // スキップメッセージが表示される可能性を確認
-    // (実際のゲーム進行で発生する)
-    const skipMessage = screen.queryByText(/スキップ|パス|手がありません/);
+    // パスボタンが表示されていることを確認
+    const passButton = screen.getByRole('button', { name: /ターンをパスする/ });
+    expect(passButton).toBeInTheDocument();
 
-    // 初期状態ではスキップはないので、メッセージは表示されない
-    expect(skipMessage).not.toBeInTheDocument();
+    // 初期状態ではパスは無効化されている（有効な手が存在するため）
+    expect(passButton).toBeDisabled();
   });
 });
