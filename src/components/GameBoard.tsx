@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useGameState } from '@/hooks/useGameState';
 import { useAIPlayer } from '@/hooks/useAIPlayer';
 import { useGameErrorHandler } from '@/hooks/useGameErrorHandler';
+import { useLiff } from '@/hooks/useLiff';
 import {
   applyMove,
   validateMove,
@@ -51,6 +52,21 @@ export default function GameBoard(): JSX.Element {
     clearInconsistency,
     getInconsistencyMessage,
   } = useGameErrorHandler();
+
+  // LIFF integration for profile icon display (Task 4.1, 4.2, 4.3)
+  const { profile, isReady, isInClient, isLoggedIn, login } = useLiff();
+
+  // State for handling image load errors (Task 4.1)
+  const [imageError, setImageError] = useState(false);
+
+  // Handle LINE login (Task 4.2)
+  const handleLineLogin = useCallback(async () => {
+    try {
+      await login();
+    } catch (error) {
+      console.error('LINE login failed:', error);
+    }
+  }, [login]);
 
   // Check if position is a valid move
   const isValidMove = useCallback(
@@ -316,6 +332,22 @@ export default function GameBoard(): JSX.Element {
         </div>
       )}
 
+      {/* LINE Login Button for External Browser (Task 4.2) */}
+      {isReady && isInClient === false && isLoggedIn === false && (
+        <div className="bg-green-100 border border-green-400 px-4 py-3 rounded mb-4 text-center">
+          <button
+            onClick={handleLineLogin}
+            data-testid="liff-login-button"
+            className="bg-line-green text-white font-bold py-2 px-6 rounded hover:bg-green-600"
+          >
+            LINEでログイン
+          </button>
+          <p className="text-sm text-gray-600 mt-2">
+            ログインするとLINEプロフィールアイコンが表示されます
+          </p>
+        </div>
+      )}
+
       {/* Game Status Display */}
       <div className="game-status">
         {/* Turn Indicator */}
@@ -357,8 +389,30 @@ export default function GameBoard(): JSX.Element {
         {/* Stone Count */}
         <div className="stone-count">
           <div className="stone-count-item">
-            <div className="stone-display stone-display-black" />
-            <span className="text-2xl font-bold">{blackCount}</span>
+            {/* Profile icon for black player (Task 4.1) */}
+            {profile?.pictureUrl && !imageError ? (
+              <img
+                src={profile.pictureUrl}
+                alt={profile.displayName}
+                data-testid="profile-icon"
+                className="w-10 h-10 rounded-full object-cover"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <div
+                className="stone-display stone-display-black"
+                data-testid="default-profile-icon"
+              />
+            )}
+            <div className="flex flex-col items-center">
+              <span className="text-2xl font-bold">{blackCount}</span>
+              {/* Display profile name when logged in (Task 4.3) */}
+              {profile && (
+                <span className="text-xs text-gray-600 mt-1">
+                  {profile.displayName}
+                </span>
+              )}
+            </div>
           </div>
           <div className="stone-count-divider">vs</div>
           <div className="stone-count-item">
