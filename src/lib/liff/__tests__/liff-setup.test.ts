@@ -9,7 +9,7 @@
  */
 
 // Import LIFF SDK for testing
-import * as liff from '@line/liff';
+import liff from '@line/liff';
 // Import package.json for version check
 import packageJson from '../../../../package.json';
 
@@ -72,9 +72,13 @@ describe('LIFF SDK Setup', () => {
   describe('LIFF SDK Version Compatibility', () => {
     it('should be using LIFF SDK v2.x or later', () => {
       // Check if @line/liff is in dependencies
+      const dependencies = packageJson.dependencies as Record<string, string>;
+      const devDependencies = packageJson.devDependencies as Record<
+        string,
+        string
+      >;
       const liffVersion =
-        packageJson.dependencies?.['@line/liff'] ||
-        packageJson.devDependencies?.['@line/liff'];
+        dependencies?.['@line/liff'] || devDependencies?.['@line/liff'];
 
       expect(liffVersion).toBeDefined();
 
