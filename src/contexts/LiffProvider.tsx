@@ -28,23 +28,25 @@ export function LiffProvider({ children }: LiffProviderProps) {
   const [profile, setProfile] = useState<LiffProfile | null>(null);
 
   const liffClientRef = useRef<LiffClient | null>(null);
-  const initializingRef = useRef(false);
 
   useEffect(() => {
-    // Prevent duplicate initialization
-    if (initializingRef.current) {
-      return;
-    }
-
-    initializingRef.current = true;
+    let isMounted = true; // Track if component is still mounted
+    let initialized = false; // Track if this effect has started initialization
 
     const initializeLiff = async () => {
+      // Prevent duplicate initialization within this effect
+      if (initialized) {
+        return;
+      }
+      initialized = true;
       const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
 
       // Check if LIFF_ID is set
       if (!liffId) {
         console.warn('LIFF_ID not set: LIFF features are disabled');
-        setIsReady(true);
+        if (isMounted) {
+          setIsReady(true);
+        }
         return;
       }
 
@@ -55,6 +57,10 @@ export function LiffProvider({ children }: LiffProviderProps) {
       try {
         // Initialize LIFF SDK
         await client.initialize(liffId);
+
+        if (!isMounted) {
+          return; // Don't update state if unmounted
+        }
 
         // Check environment and login status
         const inClient = client.isInClient();
@@ -67,27 +73,41 @@ export function LiffProvider({ children }: LiffProviderProps) {
         if (loggedIn) {
           try {
             const userProfile = await client.getProfile();
-            setProfile(userProfile);
+            if (isMounted) {
+              setProfile(userProfile);
+            }
           } catch (profileError) {
             console.error('Profile retrieval failed:', profileError);
-            setError(
-              'Failed to retrieve profile information. Default icon will be displayed.'
-            );
+            if (isMounted) {
+              setError(
+                'Failed to retrieve profile information. Default icon will be displayed.'
+              );
+            }
             // Keep isReady=true even if profile fails
           }
         }
 
-        setIsReady(true);
+        if (isMounted) {
+          setIsReady(true);
+        }
       } catch (initError) {
         console.error('LIFF initialization failed:', initError);
-        setError(
-          'LINE integration is unavailable. You can continue playing in normal mode.'
-        );
-        setIsReady(true); // Set ready even on error (fallback mode)
+        if (isMounted) {
+          setError(
+            'LINE integration is unavailable. You can continue playing in normal mode.'
+          );
+          setIsReady(true); // Set ready even on error (fallback mode)
+        }
       }
     };
 
     initializeLiff();
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+      // Note: Don't reset initializingRef.current here to prevent double initialization
+    };
   }, []);
 
   // Login function for external browser
