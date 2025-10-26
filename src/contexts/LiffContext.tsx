@@ -13,23 +13,15 @@ import type { LiffContextType } from '@/lib/liff/types';
 /**
  * Default context value with initial state
  * Used before LiffProvider initialization
+ *
+ * Note: Set to undefined to allow useLiff hook to detect usage outside provider
  */
-const defaultContextValue: LiffContextType = {
-  isReady: false,
-  error: null,
-  isInClient: null,
-  isLoggedIn: null,
-  profile: null,
-  login: async () => {
-    throw new Error('LiffProvider not mounted');
-  },
-  logout: async () => {
-    throw new Error('LiffProvider not mounted');
-  },
-};
+const defaultContextValue: LiffContextType | undefined = undefined;
 
 /**
  * LIFF Context
  * Provides LIFF state and operations to consuming components
  */
-export const LiffContext = createContext<LiffContextType>(defaultContextValue);
+export const LiffContext = createContext<LiffContextType | undefined>(
+  defaultContextValue
+);

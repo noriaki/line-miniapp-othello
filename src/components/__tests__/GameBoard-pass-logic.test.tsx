@@ -23,6 +23,19 @@ jest.mock('@/hooks/useAIPlayer', () => ({
   }),
 }));
 
+// Mock useLiff hook
+jest.mock('@/hooks/useLiff', () => ({
+  useLiff: () => ({
+    isReady: true,
+    error: null,
+    isInClient: false,
+    isLoggedIn: false,
+    profile: null,
+    login: jest.fn(),
+    logout: jest.fn(),
+  }),
+}));
+
 describe('GameBoard - Pass Logic (Task 6.2, 6.3, 6.4)', () => {
   beforeEach(() => {
     jest.clearAllMocks();

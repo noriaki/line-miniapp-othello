@@ -16,8 +16,18 @@ import type { LiffContextType } from '@/lib/liff/types';
  * Provides access to LIFF state and operations from LiffContext
  *
  * @returns LiffContextType - LIFF state and API functions
+ * @throws Error if used outside LiffProvider
  */
 export function useLiff(): LiffContextType {
   const context = useContext(LiffContext);
+
+  // Ensure hook is used within LiffProvider
+  if (!context) {
+    throw new Error(
+      'useLiff must be used within LiffProvider. ' +
+        'Please wrap your component tree with <LiffProvider>.'
+    );
+  }
+
   return context;
 }

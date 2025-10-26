@@ -12,6 +12,19 @@ jest.mock('@/hooks/useAIPlayer', () => ({
   }),
 }));
 
+// Mock useLiff hook (default: not ready - no LIFF UI elements shown)
+jest.mock('@/hooks/useLiff', () => ({
+  useLiff: () => ({
+    isReady: false, // Not ready prevents login button from showing
+    error: null,
+    isInClient: null,
+    isLoggedIn: null,
+    profile: null,
+    login: jest.fn(),
+    logout: jest.fn(),
+  }),
+}));
+
 describe('GameBoard Component', () => {
   it('正しくレンダリングされること', () => {
     render(<GameBoard />);

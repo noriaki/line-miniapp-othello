@@ -51,4 +51,25 @@ describe('useLiff', () => {
       expect(result.current.profile?.displayName).toBe('Test User');
     });
   });
+
+  describe('Task 8.2: Error Handling', () => {
+    it('should throw error when used outside LiffProvider', () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { useLiff } = require('../useLiff');
+
+      // This will fail initially - we need to verify error is thrown
+      expect(() => {
+        renderHook(() => useLiff());
+      }).toThrow();
+    });
+
+    it('should throw descriptive error message when context is undefined', () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { useLiff } = require('../useLiff');
+
+      expect(() => {
+        renderHook(() => useLiff());
+      }).toThrow(/LiffProvider/);
+    });
+  });
 });
