@@ -1,0 +1,22 @@
+{
+  "feature_name": "line-miniapp-support",
+  "created_at": "2025-10-26T10:04:04Z",
+  "updated_at": "2025-10-26T12:30:00Z",
+  "language": "ja",
+  "phase": "implementation",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

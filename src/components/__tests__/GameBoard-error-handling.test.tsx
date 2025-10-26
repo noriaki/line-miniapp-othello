@@ -20,6 +20,19 @@ jest.mock('@/hooks/useAIPlayer', () => ({
   }),
 }));
 
+// Mock useLiff hook
+jest.mock('@/hooks/useLiff', () => ({
+  useLiff: () => ({
+    isReady: true,
+    error: null,
+    isInClient: false,
+    isLoggedIn: false,
+    profile: null,
+    login: jest.fn(),
+    logout: jest.fn(),
+  }),
+}));
+
 describe('GameBoard Error Handling (Task 5)', () => {
   // Spy on console methods
   let consoleWarnSpy: jest.SpyInstance;
