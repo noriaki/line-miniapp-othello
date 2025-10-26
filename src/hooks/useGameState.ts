@@ -11,6 +11,9 @@ export interface GameState {
   blackCount: number;
   whiteCount: number;
   isAIThinking: boolean;
+  consecutivePassCount: number;
+  incrementPassCount: () => void;
+  resetPassCount: () => void;
 }
 
 export function useGameState() {
@@ -18,6 +21,7 @@ export function useGameState() {
   const [currentPlayer, setCurrentPlayer] = useState<Player>('black');
   const [gameStatus, setGameStatus] = useState<GameStatus>({ type: 'playing' });
   const [isAIThinking, setIsAIThinking] = useState(false);
+  const [consecutivePassCount, setConsecutivePassCount] = useState(0);
 
   const validMoves = calculateValidMoves(board, currentPlayer);
   const { black: blackCount, white: whiteCount } = countStones(board);
@@ -38,11 +42,20 @@ export function useGameState() {
     setIsAIThinking(thinking);
   }, []);
 
+  const incrementPassCount = useCallback(() => {
+    setConsecutivePassCount((prev) => Math.min(prev + 1, 2));
+  }, []);
+
+  const resetPassCount = useCallback(() => {
+    setConsecutivePassCount(0);
+  }, []);
+
   const resetGame = useCallback(() => {
     setBoard(createInitialBoard());
     setCurrentPlayer('black');
     setGameStatus({ type: 'playing' });
     setIsAIThinking(false);
+    setConsecutivePassCount(0);
   }, []);
 
   return {
@@ -53,10 +66,13 @@ export function useGameState() {
     blackCount,
     whiteCount,
     isAIThinking,
+    consecutivePassCount,
     updateBoard,
     switchPlayer,
     updateGameStatus,
     setAIThinking,
+    incrementPassCount,
+    resetPassCount,
     resetGame,
   };
 }

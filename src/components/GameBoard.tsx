@@ -42,7 +42,7 @@ export default function GameBoard(): JSX.Element {
   const {
     handleInvalidMove,
     getErrorMessage,
-    getSkipMessage,
+    getPassMessage,
     hasInconsistency,
     clearInconsistency,
     getInconsistencyMessage,
@@ -185,9 +185,9 @@ export default function GameBoard(): JSX.Element {
           {getErrorMessage()}
         </div>
       )}
-      {getSkipMessage() && (
+      {getPassMessage() && (
         <div className="notification-message bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-          {getSkipMessage()}
+          {getPassMessage()}
         </div>
       )}
       {hasInconsistency && (

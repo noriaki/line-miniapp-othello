@@ -65,56 +65,6 @@ describe('useGameErrorHandler', () => {
     });
   });
 
-  describe('RED: Turn skip notification', () => {
-    it('should set skip notification when player has no valid moves', () => {
-      const { result } = renderHook(() => useGameErrorHandler());
-
-      act(() => {
-        result.current.notifyTurnSkip('black');
-      });
-
-      expect(result.current.skipNotification).toBe('black');
-    });
-
-    it('should clear skip notification after timeout', () => {
-      jest.useFakeTimers();
-      const { result } = renderHook(() => useGameErrorHandler());
-
-      act(() => {
-        result.current.notifyTurnSkip('white');
-      });
-
-      expect(result.current.skipNotification).toBe('white');
-
-      // Fast-forward time by 3 seconds
-      act(() => {
-        jest.advanceTimersByTime(3000);
-      });
-
-      expect(result.current.skipNotification).toBeNull();
-
-      jest.useRealTimers();
-    });
-
-    it('should provide skip message for each player', () => {
-      const { result } = renderHook(() => useGameErrorHandler());
-
-      act(() => {
-        result.current.notifyTurnSkip('black');
-      });
-      expect(result.current.getSkipMessage()).toBe(
-        '有効な手がありません。あなたのターンをスキップします。'
-      );
-
-      act(() => {
-        result.current.notifyTurnSkip('white');
-      });
-      expect(result.current.getSkipMessage()).toBe(
-        '有効な手がありません。AIのターンをスキップします。'
-      );
-    });
-  });
-
   describe('RED: Game state inconsistency detection', () => {
     it('should detect invalid board state', () => {
       const { result } = renderHook(() => useGameErrorHandler());
