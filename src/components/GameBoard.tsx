@@ -30,6 +30,7 @@ export default function GameBoard(): JSX.Element {
     blackCount,
     whiteCount,
     isAIThinking,
+    consecutivePassCount,
     updateBoard,
     switchPlayer,
     updateGameStatus,
@@ -61,9 +62,9 @@ export default function GameBoard(): JSX.Element {
     [validMoves]
   );
 
-  // Handle pass operation (Task 3.1)
+  // Handle pass operation (Task 3.1, Task 5.1, Task 5.2)
   const handlePass = useCallback(async () => {
-    // Validate game state
+    // Task 5.2: Validate game state
     if (gameStatus.type !== 'playing') {
       console.error('Pass attempted while game is not in playing state', {
         gameStatus,
@@ -71,8 +72,11 @@ export default function GameBoard(): JSX.Element {
       return;
     }
 
-    // Validate no valid moves exist
-    if (validMoves.length > 0) {
+    // Task 5.1: Validate no valid moves exist
+    // validMoves is recalculated on each render from board/currentPlayer,
+    // so we access it directly rather than adding to dependencies
+    const currentValidMoves = calculateValidMoves(board, currentPlayer);
+    if (currentValidMoves.length > 0) {
       console.warn('Pass button clicked while valid moves exist');
       return;
     }
@@ -85,7 +89,14 @@ export default function GameBoard(): JSX.Element {
 
     // Switch player
     switchPlayer();
-  }, [gameStatus, currentPlayer, notifyPass, incrementPassCount, switchPlayer]);
+  }, [
+    gameStatus,
+    board,
+    currentPlayer,
+    notifyPass,
+    incrementPassCount,
+    switchPlayer,
+  ]);
 
   // Handle cell click
   const handleCellClick = useCallback(
@@ -139,7 +150,6 @@ export default function GameBoard(): JSX.Element {
       currentPlayer,
       gameStatus,
       isAIThinking,
-      validMoves,
       updateBoard,
       switchPlayer,
       updateGameStatus,
@@ -148,13 +158,74 @@ export default function GameBoard(): JSX.Element {
     ]
   );
 
-  // AI turn handling
+  // Consecutive pass detection (Task 4.2, Task 5.3)
+  useEffect(() => {
+    if (gameStatus.type !== 'playing') {
+      return;
+    }
+
+    // Task 5.3: Validate consecutivePassCount range
+    if (consecutivePassCount < 0 || consecutivePassCount > 2) {
+      console.error('Invalid consecutivePassCount value', {
+        consecutivePassCount,
+      });
+      resetPassCount(); // Reset to safe state
+      return;
+    }
+
+    // Task 4.2: Check for consecutive pass (both players passed)
+    if (consecutivePassCount === 2) {
+      // Both players have no valid moves - end game
+      const blackValidMoves = calculateValidMoves(board, 'black');
+      const whiteValidMoves = calculateValidMoves(board, 'white');
+      const endResult = checkGameEnd(board, blackValidMoves, whiteValidMoves);
+
+      if (endResult.ended) {
+        updateGameStatus({
+          type: 'finished',
+          winner: endResult.winner,
+        });
+      }
+    }
+  }, [
+    consecutivePassCount,
+    gameStatus,
+    board,
+    updateGameStatus,
+    resetPassCount,
+  ]);
+
+  // AI turn handling (with auto-pass support - Task 4.1)
   useEffect(() => {
     if (
       gameStatus.type !== 'playing' ||
       currentPlayer !== 'white' ||
       isAIThinking
     ) {
+      return;
+    }
+
+    // Task 4.1: Check if AI has valid moves
+    if (validMoves.length === 0) {
+      // AI has no valid moves - auto-pass
+      setAIThinking(true);
+
+      // Show AI thinking indicator briefly
+      setTimeout(() => {
+        // Notify AI pass
+        notifyPass('white');
+
+        // Increment pass count
+        incrementPassCount();
+
+        // Wait 1 second for user to see notification
+        setTimeout(() => {
+          // Switch back to user
+          switchPlayer();
+          setAIThinking(false);
+        }, 1000);
+      }, 100);
+
       return;
     }
 
@@ -205,6 +276,7 @@ export default function GameBoard(): JSX.Element {
     currentPlayer,
     gameStatus,
     board,
+    validMoves,
     isAIThinking,
     calculateMove,
     updateBoard,
@@ -212,6 +284,8 @@ export default function GameBoard(): JSX.Element {
     updateGameStatus,
     setAIThinking,
     resetPassCount,
+    notifyPass,
+    incrementPassCount,
   ]);
 
   return (
