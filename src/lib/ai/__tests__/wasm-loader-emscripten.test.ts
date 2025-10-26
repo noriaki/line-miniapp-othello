@@ -166,7 +166,12 @@ describe('loadWASM - Emscripten Integration', () => {
     delete (global as any).Module;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (global as any).importScripts = jest.fn(); // No Module set
+    (global as any).importScripts = jest.fn().mockImplementation(() => {
+      // Simulate scenario where Emscripten glue code fails to set up Module
+      // Delete the pre-configured Module object to simulate initialization failure
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (global as any).Module;
+    });
 
     const result = await loadWASM('/ai.wasm');
 

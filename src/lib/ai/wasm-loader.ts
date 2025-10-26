@@ -82,15 +82,12 @@ export async function loadWASM(
       };
     }
 
-    // Check if Module is available and has required Emscripten functions
+    // Check if Module object exists after loading ai.js
+    // Note: _malloc, _free, etc. are not available yet - they will be set after WASM initialization
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const Module = (self as any).Module as EmscriptenModule | undefined;
 
-    if (
-      !Module ||
-      typeof Module._malloc !== 'function' ||
-      typeof Module._free !== 'function'
-    ) {
+    if (!Module) {
       return {
         success: false,
         error: {
@@ -133,6 +130,22 @@ export async function loadWASM(
         resolve();
       }
     });
+
+    // After runtime initialization, verify that required functions are available
+    if (
+      typeof Module._malloc !== 'function' ||
+      typeof Module._free !== 'function'
+    ) {
+      return {
+        success: false,
+        error: {
+          type: 'wasm_load_error',
+          reason: 'instantiation_failed',
+          message:
+            'Required WASM functions (_malloc, _free) not found after runtime initialization.',
+        },
+      };
+    }
 
     // Initialize AI
     if (typeof Module._init_ai === 'function') {
