@@ -278,6 +278,10 @@ export default function GameBoard(): JSX.Element {
           } else {
             switchPlayer();
           }
+        } else {
+          // Fix: AI returned invalid move - skip AI turn to prevent infinite loop
+          console.error('AI returned invalid move, skipping turn');
+          switchPlayer();
         }
       })
       .catch((error) => {
