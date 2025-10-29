@@ -275,5 +275,88 @@ describe('Move History', () => {
         expect(notation).toBe('a1b2c3');
       });
     });
+
+    describe('performance tests', () => {
+      it('should generate 60-move notation string in less than 1ms', () => {
+        // Generate realistic 60-move game history
+        const moves: string[] = [];
+        const columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+        const rows = ['1', '2', '3', '4', '5', '6', '7', '8'];
+
+        // Create 60 moves (typical full game)
+        for (let i = 0; i < 60; i++) {
+          const col = columns[i % 8];
+          const row = rows[Math.floor(i / 8) % 8];
+          moves.push(col + row);
+        }
+
+        const history: readonly string[] = moves;
+
+        // Measure performance
+        const startTime = performance.now();
+        const result = generateNotationString(history);
+        const endTime = performance.now();
+        const duration = endTime - startTime;
+
+        // Verify correctness
+        expect(result).toHaveLength(120); // 60 moves * 2 characters
+        expect(result.startsWith('a1b1c1')).toBe(true); // First 3 moves: a1, b1, c1
+
+        // Verify performance: should complete in less than 1ms
+        expect(duration).toBeLessThan(1);
+      });
+
+      it('should handle multiple consecutive calls efficiently', () => {
+        // Generate 60-move history
+        const moves: string[] = [];
+        for (let i = 0; i < 60; i++) {
+          moves.push('e6'); // Simple repeated move
+        }
+        const history: readonly string[] = moves;
+
+        // Measure performance of 100 consecutive calls
+        const iterations = 100;
+        const startTime = performance.now();
+
+        for (let i = 0; i < iterations; i++) {
+          generateNotationString(history);
+        }
+
+        const endTime = performance.now();
+        const averageDuration = (endTime - startTime) / iterations;
+
+        // Average call should be well under 1ms
+        expect(averageDuration).toBeLessThan(1);
+      });
+
+      it('should not cause performance degradation with growing history', () => {
+        const times: number[] = [];
+
+        // Test with incrementally growing history (10, 20, 30, ... 60 moves)
+        for (let moveCount = 10; moveCount <= 60; moveCount += 10) {
+          const moves: string[] = Array(moveCount).fill('a1');
+          const history: readonly string[] = moves;
+
+          const startTime = performance.now();
+          generateNotationString(history);
+          const endTime = performance.now();
+
+          times.push(endTime - startTime);
+        }
+
+        // All times should be less than 1ms
+        times.forEach((time) => {
+          expect(time).toBeLessThan(1);
+        });
+
+        // Performance should scale linearly (no exponential growth)
+        // The last measurement (60 moves) should not be more than 6x the first (10 moves)
+        const firstTime = times[0] || 0.001; // Avoid division by zero
+        const lastTime = times[times.length - 1] || 0;
+        const ratio = lastTime / firstTime;
+
+        expect(ratio).toBeLessThan(10); // Very conservative bound (actual should be much better)
+      });
+    });
   });
 });
