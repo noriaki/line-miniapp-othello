@@ -57,7 +57,7 @@
   - AI着手もmoveHistoryに記録されることを確認する
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 4. GameBoardコンポーネントへの棋譜表示UI追加
+- [x] 4. GameBoardコンポーネントへの棋譜表示UI追加
   - 画面下部(パスボタンの下)に棋譜表示領域を配置する
   - notationStringが空でない場合のみ表示する条件分岐を実装する
   - ゲーム進行中(playing状態)のみ表示する条件を追加する
@@ -66,7 +66,7 @@
   - data-testid="move-history"属性を追加しテスト可能にする
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7_
 
-- [ ] 4.1 GameBoardでの着手時updateBoard呼び出しの更新
+- [x] 4.1 GameBoardでの着手時updateBoard呼び出しの更新
   - handleCellClick関数内のupdateBoard呼び出しにlastMove引数(position)を追加する
   - AI着手useEffect内のupdateBoard呼び出しにlastMove引数(move)を追加する
   - パス処理のupdateBoard呼び出しはlastMove未指定のまま維持する
