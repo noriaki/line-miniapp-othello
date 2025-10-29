@@ -133,9 +133,10 @@ export function encodeBoard(
  * - value: evaluation score
  *
  * Decoding steps:
- * 1. policy = 63 - Math.floor((result - 100) / 1000)
- * 2. index = 63 - policy
- * 3. row = Math.floor(index / 8), col = index % 8
+ * 1. policy = 63 - Math.floor(result / 1000)
+ * 2. value = (result % 1000) - 100
+ * 3. index = 63 - policy
+ * 4. row = Math.floor(index / 8), col = index % 8
  */
 export function decodeResponse(
   encodedResult: number
@@ -152,8 +153,9 @@ export function decodeResponse(
     };
   }
 
-  // Decode: policy = 63 - Math.floor((result - 100) / 1000)
-  const policy = 63 - Math.floor((encodedResult - 100) / 1000);
+  // Decode: policy = 63 - Math.floor(result / 1000)
+  // IMPORTANT: Do NOT subtract 100 before dividing! The value is encoded in the last 3 digits.
+  const policy = 63 - Math.floor(encodedResult / 1000);
 
   // Validate policy range
   if (policy < 0 || policy > 63) {
