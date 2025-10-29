@@ -37,3 +37,18 @@ export function positionToNotation(position: Position): string {
 
   return columnLetter + rowNumber;
 }
+
+/**
+ * Generates a concatenated string from move history array
+ * @param history - Array of move notation strings (e.g., ["e6", "f6", "f5"])
+ * @returns Concatenated string without separators (e.g., "e6f6f5")
+ *          Returns empty string for empty array
+ *
+ * @example
+ * generateNotationString([]) // returns ""
+ * generateNotationString(["e6"]) // returns "e6"
+ * generateNotationString(["e6", "f6", "f5"]) // returns "e6f6f5"
+ */
+export function generateNotationString(history: readonly string[]): string {
+  return history.join('');
+}

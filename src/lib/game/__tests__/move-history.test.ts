@@ -1,5 +1,5 @@
 import type { Position } from '../types';
-import { positionToNotation } from '../move-history';
+import { positionToNotation, generateNotationString } from '../move-history';
 
 describe('Move History', () => {
   describe('positionToNotation', () => {
@@ -168,6 +168,111 @@ describe('Move History', () => {
           value: originalEnv,
           configurable: true,
         });
+      });
+    });
+  });
+
+  describe('generateNotationString', () => {
+    describe('basic case tests', () => {
+      it('should return empty string for empty array', () => {
+        const history: readonly string[] = [];
+        expect(generateNotationString(history)).toBe('');
+      });
+
+      it('should return single notation for array with one move', () => {
+        const history: readonly string[] = ['e6'];
+        expect(generateNotationString(history)).toBe('e6');
+      });
+
+      it('should concatenate multiple moves without separator', () => {
+        const history: readonly string[] = ['e6', 'f6', 'f5'];
+        expect(generateNotationString(history)).toBe('e6f6f5');
+      });
+
+      it('should handle longer sequence correctly', () => {
+        const history: readonly string[] = ['e6', 'f6', 'f5', 'd6'];
+        expect(generateNotationString(history)).toBe('e6f6f5d6');
+      });
+    });
+
+    describe('edge case tests', () => {
+      it('should handle long history (60+ moves) correctly', () => {
+        // Generate 64 moves (full board)
+        const moves: string[] = [];
+        const columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+        const rows = ['1', '2', '3', '4', '5', '6', '7', '8'];
+
+        for (let i = 0; i < 8; i++) {
+          for (let j = 0; j < 8; j++) {
+            moves.push(columns[i] + rows[j]);
+          }
+        }
+
+        const history: readonly string[] = moves;
+        const result = generateNotationString(history);
+
+        // Verify length: 64 moves * 2 characters = 128 characters
+        expect(result).toHaveLength(128);
+        // Verify it starts correctly
+        expect(result.startsWith('a1a2a3a4a5a6a7a8')).toBe(true);
+        // Verify it ends correctly
+        expect(result.endsWith('h1h2h3h4h5h6h7h8')).toBe(true);
+      });
+
+      it('should not modify the input array (immutability)', () => {
+        const history: readonly string[] = ['e6', 'f6', 'f5'];
+        const originalLength = history.length;
+        const originalFirst = history[0];
+        const originalLast = history[history.length - 1];
+
+        generateNotationString(history);
+
+        // Verify input array is unchanged
+        expect(history).toHaveLength(originalLength);
+        expect(history[0]).toBe(originalFirst);
+        expect(history[history.length - 1]).toBe(originalLast);
+      });
+    });
+
+    describe('pure function tests', () => {
+      it('should return the same output for the same input', () => {
+        const history: readonly string[] = ['e6', 'f6', 'f5'];
+        const result1 = generateNotationString(history);
+        const result2 = generateNotationString(history);
+        const result3 = generateNotationString(history);
+
+        expect(result1).toBe(result2);
+        expect(result2).toBe(result3);
+      });
+
+      it('should have no side effects', () => {
+        const history: readonly string[] = ['e6', 'f6'];
+        const copyBefore = [...history];
+
+        generateNotationString(history);
+
+        // Verify no side effects by comparing with original
+        expect(history).toEqual(copyBefore);
+      });
+    });
+
+    describe('type safety tests', () => {
+      it('should accept readonly array', () => {
+        const history: readonly string[] = ['e6', 'f6'];
+        const result: string = generateNotationString(history);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should return string type', () => {
+        const history: readonly string[] = ['e6'];
+        const result = generateNotationString(history);
+        expect(typeof result).toBe('string');
+      });
+
+      it('should compile without TypeScript errors', () => {
+        const history: readonly string[] = ['a1', 'b2', 'c3'];
+        const notation: string = generateNotationString(history);
+        expect(notation).toBe('a1b2c3');
       });
     });
   });
