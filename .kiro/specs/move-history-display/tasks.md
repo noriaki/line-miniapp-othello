@@ -40,7 +40,7 @@
   - 型安全性テスト: readonly modifiersが正しく機能することを確認する
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 3. useGameStateへの棋譜管理機能追加
+- [x] 3. useGameStateへの棋譜管理機能追加
   - moveHistory状態(string配列)をuseGameState内に追加する
   - notationString導出値を実装する(generateNotationStringで毎回計算、useMemoは不要)
   - updateBoard関数にlastMove?: Position引数を追加し、盤面更新と同時に棋譜記録を行う
@@ -49,7 +49,7 @@
   - 既存のゲーム状態管理との一貫性を保つ実装を行う
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 3.1 useGameState棋譜管理機能の統合テスト作成
+- [x] 3.1 useGameState棋譜管理機能の統合テスト作成
   - updateBoard実行時にlastMove指定→moveHistory追加→notationString更新の一連の流れを検証する
   - 複数手の連続追加が正しく記録されることを確認する(黒白黒の順序検証)
   - resetGame実行→moveHistory空配列、notationString空文字列を検証する

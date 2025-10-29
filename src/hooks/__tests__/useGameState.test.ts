@@ -169,4 +169,132 @@ describe('useGameState', () => {
       expect(result.current.consecutivePassCount).toBeGreaterThanOrEqual(0);
     });
   });
+
+  describe('RED: Move history management (Task 3.1)', () => {
+    it('should initialize moveHistory as empty array and notationString as empty string', () => {
+      const { result } = renderHook(() => useGameState());
+
+      expect(result.current.moveHistory).toEqual([]);
+      expect(result.current.notationString).toBe('');
+    });
+
+    it('should add move to history when updateBoard is called with lastMove', () => {
+      const { result } = renderHook(() => useGameState());
+
+      // Create a mock new board (exact content doesn't matter for this test)
+      const newBoard = result.current.board;
+
+      // Update board with a move at position (4, 5) which should convert to "e6"
+      act(() => {
+        result.current.updateBoard(newBoard, { row: 4, col: 5 });
+      });
+
+      expect(result.current.moveHistory).toEqual(['e6']);
+      expect(result.current.notationString).toBe('e6');
+    });
+
+    it('should record multiple consecutive moves in correct order', () => {
+      const { result } = renderHook(() => useGameState());
+
+      const newBoard = result.current.board;
+
+      // First move: black at e6
+      act(() => {
+        result.current.updateBoard(newBoard, { row: 4, col: 5 });
+      });
+
+      expect(result.current.moveHistory).toEqual(['e6']);
+
+      // Second move: white at f6
+      act(() => {
+        result.current.updateBoard(newBoard, { row: 5, col: 5 });
+      });
+
+      expect(result.current.moveHistory).toEqual(['e6', 'f6']);
+
+      // Third move: black at f5
+      act(() => {
+        result.current.updateBoard(newBoard, { row: 5, col: 4 });
+      });
+
+      expect(result.current.moveHistory).toEqual(['e6', 'f6', 'f5']);
+      expect(result.current.notationString).toBe('e6f6f5');
+    });
+
+    it('should not record move when updateBoard is called without lastMove (pass)', () => {
+      const { result } = renderHook(() => useGameState());
+
+      const newBoard = result.current.board;
+
+      // First move with position
+      act(() => {
+        result.current.updateBoard(newBoard, { row: 4, col: 5 });
+      });
+
+      expect(result.current.moveHistory).toEqual(['e6']);
+
+      // Pass (updateBoard without lastMove)
+      act(() => {
+        result.current.updateBoard(newBoard);
+      });
+
+      // History should not change
+      expect(result.current.moveHistory).toEqual(['e6']);
+      expect(result.current.notationString).toBe('e6');
+    });
+
+    it('should reset moveHistory and notationString when resetGame is called', () => {
+      const { result } = renderHook(() => useGameState());
+
+      const newBoard = result.current.board;
+
+      // Add some moves
+      act(() => {
+        result.current.updateBoard(newBoard, { row: 4, col: 5 });
+        result.current.updateBoard(newBoard, { row: 5, col: 5 });
+        result.current.updateBoard(newBoard, { row: 5, col: 4 });
+      });
+
+      expect(result.current.moveHistory).toEqual(['e6', 'f6', 'f5']);
+      expect(result.current.notationString).toBe('e6f6f5');
+
+      // Reset game
+      act(() => {
+        result.current.resetGame();
+      });
+
+      expect(result.current.moveHistory).toEqual([]);
+      expect(result.current.notationString).toBe('');
+    });
+
+    it('should update notationString reactively when moveHistory changes', () => {
+      const { result } = renderHook(() => useGameState());
+
+      const newBoard = result.current.board;
+
+      // Initially empty
+      expect(result.current.notationString).toBe('');
+
+      // Add first move
+      act(() => {
+        result.current.updateBoard(newBoard, { row: 4, col: 5 });
+      });
+
+      expect(result.current.notationString).toBe('e6');
+
+      // Add second move
+      act(() => {
+        result.current.updateBoard(newBoard, { row: 5, col: 5 });
+      });
+
+      expect(result.current.notationString).toBe('e6f6');
+
+      // Reset
+      act(() => {
+        result.current.resetGame();
+      });
+
+      expect(result.current.notationString).toBe('');
+    });
+  });
 });
