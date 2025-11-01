@@ -37,14 +37,14 @@
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.6_
 
 - [ ] 2. GameBoardコンポーネントへのID属性追加
-- [ ] 2.1 盤面セルへのID属性設定と統合テスト
-  - GameBoard.tsxのセルレンダリングロジック(L434-459)にID生成関数を統合する
-  - 各`<button>`要素のid属性に修正済みのセルIDを設定する
-  - 既存のkey, className, onClick, data-\*属性と共存させる
-  - `/src/components/GameBoard.test.tsx`で特定セルのid属性を検証する統合テストを追加する
-  - DOM全体をスキャンしてID一意性を検証する統合テストを追加する
-  - 既存のdata-row, data-col属性との共存を確認する統合テストを追加する
-  - 統合テストを実行してパスすることを確認する(`pnpm test`)
+- [x] 2.1 盤面セルへのID属性設定と統合テスト
+  - GameBoard.tsxのセルレンダリングロジック(L434-459)にID生成関数を統合済み
+  - 各`<button>`要素のid属性に修正済みのセルIDを設定済み
+  - 既存のkey, className, onClick, data-\*属性と共存確認済み
+  - `/src/components/__tests__/GameBoard.test.tsx`で特定セルのid属性を検証する統合テスト追加済み
+  - DOM全体をスキャンしてID一意性を検証する統合テスト追加済み
+  - 既存のdata-row, data-col属性との共存を確認する統合テスト追加済み
+  - 統合テストを実行してパス確認済み(`pnpm test`) - 全38テスト成功
   - _Requirements: 1.1, 1.7, 3.1, 4.1_
 
 - [x] 2.2 着手履歴コンポーネントへのID属性設定(完了)
