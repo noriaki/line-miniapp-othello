@@ -116,56 +116,76 @@ graph TB
 
 ### Key Design Decisions
 
-#### Decision 1: セルID生成を行優先(Row-first)形式で実装
+#### Decision 1: セルID生成を標準的な座標マッピングで実装（既存実装の修正）
 
 **Context**:
-リバーシの棋譜表記は通常「列(a-h)」+「行(1-8)」の形式(例: c4, e6)。現在のboard配列は`board[row][col]`の行優先(row-major)構造でインデックス化されており、`rowIndex`(0-7)は縦方向の行、`colIndex`(0-7)は横方向の列を表す。既存のE2Eテストとnotation変換ロジックでは、`rowIndex → 列文字(a-h)`, `colIndex → 行数字(1-8)` のマッピングが確立されている。
+リバーシの棋譜表記は通常「列(a-h)」+「行(1-8)」の形式(例: c4, e6)。盤面の視覚的な配置では：
+
+- **列(column)**: 左から右へ a, b, c, d, e, f, g, h（横方向）
+- **行(row)**: 上から下へ 1, 2, 3, 4, 5, 6, 7, 8（縦方向）
+
+現在のboard配列は`board[row][col]`の行優先(row-major)構造でインデックス化されており、`rowIndex`(0-7)は縦方向の位置（上→下）、`colIndex`(0-7)は横方向の位置（左→右）を表す。
 
 **Requirements Analysis**:
 
+- Requirement 1 AC3: "左上隅(列a、行1)に位置するセル SHALL `id="a1"` 属性を持つ"
+- Requirement 1 AC4: "右下隅(列h、行8)に位置するセル SHALL `id="h8"` 属性を持つ"
 - Requirement 1 AC5: "列方向の位置が0から7のインデックスで管理される THE ゲームボードUI SHALL インデックスをa-hの文字に変換する(0→a, 1→b, ..., 7→h)"
 - Requirement 1 AC6: "行方向の位置が0から7のインデックスで管理される THE ゲームボードUI SHALL インデックスを1-8の数字に変換する(0→1, 1→2, ..., 7→8)"
 
-**Existing Codebase Evidence**:
-既存の `/e2e/move-history.spec.ts` L36-38 では以下のように明示されている:
+要件の視覚的な意味:
+
+- 左上隅（視覚的に最も左上のセル） = a1
+- 右下隅（視覚的に最も右下のセル） = h8
+- 視覚的な最上行の横一列（左→右）= a1, b1, c1, d1, e1, f1, g1, h1
+- 視覚的な左端の縦一列（上→下）= a1, a2, a3, a4, a5, a6, a7, a8
+
+**Existing Codebase Issues**:
+既存の `/e2e/move-history.spec.ts` と `/src/lib/game/move-history.ts` では、座標マッピングが**要件と逆**になっていた:
 
 ```typescript
-// Important: In this codebase:
-//   - row (0-7) → column letter (a-h)
-//   - col (0-7) → row number (1-8)
-// So row=2, col=3 converts to: c (column from row) + 4 (row from col+1) = "c4"
+// 既存の間違った実装:
+//   - row (0-7) → column letter (a-h)  ← 誤り
+//   - col (0-7) → row number (1-8)     ← 誤り
+const columnLetter = String.fromCharCode('a'.charCodeAt(0) + row); // 間違い
+const rowNumber = String(col + 1); // 間違い
 ```
 
-また、`/src/lib/game/move-history.ts` の `positionToNotation` 関数でも同じマッピングが使用されている:
-
-```typescript
-const columnLetter = String.fromCharCode('a'.charCodeAt(0) + row); // row → 列文字
-const rowNumber = String(col + 1); // col → 行数字
-```
+この実装では、視覚的な最上行が `a1, a2, a3...` となり、列文字が固定されてしまう（正しくは `a1, b1, c1...` であるべき）。
 
 **Selected Approach**:
-既存コードベースと整合する**行優先(Row-first)変換**を採用し、ID生成関数を以下のように実装する:
+要件に適合する**標準的な座標マッピング**を採用し、ID生成関数を以下のように実装する:
 
 ```typescript
 const generateCellId = (rowIndex: number, colIndex: number): string => {
-  const column = String.fromCharCode(97 + rowIndex); // rowIndex (0-7) → column (a-h)
-  const row = colIndex + 1; // colIndex (0-7) → row (1-8)
+  const column = String.fromCharCode(97 + colIndex); // colIndex (0-7) → column (a-h) 横方向
+  const row = rowIndex + 1; // rowIndex (0-7) → row (1-8) 縦方向
   return `${column}${row}`;
 };
 
-// Example: board[2][3] → rowIndex=2 → 'c', colIndex=3 → 4 → "c4"
+// Example: board[0][0] → rowIndex=0 → 1, colIndex=0 → 'a' → "a1" (左上隅)
+// Example: board[7][7] → rowIndex=7 → 8, colIndex=7 → 'h' → "h8" (右下隅)
+// Example: board[0][2] → rowIndex=0 → 1, colIndex=2 → 'c' → "c1" (最上行の3番目)
 ```
 
 **Rationale**:
 
-1. **既存テストとの整合性**: `/e2e/move-history.spec.ts` のコメントで明示的に「row=2, col=3 converts to c4」と記述されており、この変換ロジックが既にテストの前提となっている
-2. **既存コードとの一貫性**: `/src/lib/game/move-history.ts` の `positionToNotation` 関数が同じマッピングを使用しており、棋譜表示ロジックと完全に整合する
-3. **最小変更原則**: 既存の理解・テスト・ドキュメントに適合する実装が最も安全で、追加のマッピング変更や既存テスト修正が不要
+1. **要件適合性**: Requirement 1 AC3/AC4で明示された「左上隅=a1、右下隅=h8」という視覚的な要件を満たす
+2. **直感的な理解**: 横方向（左→右）が列文字の変化、縦方向（上→下）が行数字の変化という標準的なチェス表記に準拠
+3. **保守性向上**: 変数名(`rowIndex`/`colIndex`)と実際の座標軸（縦/横）が一致し、将来のコード読解が容易になる
 
 **Trade-offs**:
 
-- **獲得**: 既存テストとの互換性、既存notation変換ロジックとの整合性、最小リスク、追加のテスト修正不要
-- **犠牲**: なし(既存の設計パターンを踏襲するため、新たなトレードオフは発生しない)
+- **獲得**: 要件適合、標準的なチェス表記との整合性、直感的な理解、保守性向上
+- **犠牲**: 既存の `/src/lib/game/move-history.ts` と `/e2e/move-history.spec.ts` の修正が必要（ただし、これらは元々要件と矛盾していたため、修正は必須）
+
+**Migration Impact**:
+以下のファイルの修正が必要:
+
+- `/src/lib/game/move-history.ts`: `positionToNotation` 関数のマッピングロジック
+- `/e2e/move-history.spec.ts`: テスト内のコメントと期待値
+- `/src/lib/game/cell-id.ts`: 新規作成するID生成関数（正しいマッピングで実装）
+- `/e2e/element-id-assignment.spec.ts`: 新規作成するE2Eテスト（正しいマッピングで実装）
 
 #### Decision 2: ID一意性保証をコンポーネントレベルで静的に実現
 
@@ -253,11 +273,11 @@ sequenceDiagram
 | Requirement | Summary                    | Components           | Interfaces                                | Implementation Notes              |
 | ----------- | -------------------------- | -------------------- | ----------------------------------------- | --------------------------------- |
 | 1.1         | 各セルに一意のid属性生成   | GameBoard (L434-459) | `id={generateCellId(rowIndex, colIndex)}` | 64個の`<button>`要素に適用        |
-| 1.2         | ID形式 `{列文字}{行数字}`  | ID生成ロジック       | `generateCellId(): string`                | `row→a-h, col→1-8`変換            |
+| 1.2         | ID形式 `{列文字}{行数字}`  | ID生成ロジック       | `generateCellId(): string`                | `col→a-h, row→1-8`変換            |
 | 1.3         | 左上隅セルに`id="a1"`      | GameBoard            | `board[0][0]` → `id="a1"`                 | rowIndex=0, colIndex=0で検証      |
 | 1.4         | 右下隅セルに`id="h8"`      | GameBoard            | `board[7][7]` → `id="h8"`                 | rowIndex=7, colIndex=7で検証      |
-| 1.5         | 列インデックス0-7をa-h変換 | ID生成ロジック       | `String.fromCharCode(97 + rowIndex)`      | ASCII変換使用                     |
-| 1.6         | 行インデックス0-7を1-8変換 | ID生成ロジック       | `colIndex + 1`                            | 単純な加算                        |
+| 1.5         | 列インデックス0-7をa-h変換 | ID生成ロジック       | `String.fromCharCode(97 + colIndex)`      | ASCII変換使用（横方向）           |
+| 1.6         | 行インデックス0-7を1-8変換 | ID生成ロジック       | `rowIndex + 1`                            | 単純な加算（縦方向）              |
 | 1.7         | E2EテストでDOM選択可能     | Playwright Tests     | `page.locator('#c4')`                     | 既存テストの更新                  |
 | 2.1         | 履歴エリアに`id="history"` | GameBoard (L478-488) | `id="history"`                            | `<div>`要素に静的文字列設定       |
 | 2.2         | 画面下部の履歴エリア特定   | GameBoard            | L478-488のコンテナ                        | 既存の`data-testid`と併用         |
@@ -329,9 +349,9 @@ export interface GameBoardProps {
  * - board[7][7] → "h8"
  */
 const generateCellId = (rowIndex: number, colIndex: number): string => {
-  // Implementation note: rowIndex maps to column (a-h), colIndex maps to row (1-8)
-  const column = String.fromCharCode(97 + rowIndex); // a-h
-  const row = colIndex + 1; // 1-8
+  // Implementation note: colIndex maps to column (a-h) 横方向, rowIndex maps to row (1-8) 縦方向
+  const column = String.fromCharCode(97 + colIndex); // a-h (横方向、左→右)
+  const row = rowIndex + 1; // 1-8 (縦方向、上→下)
   return `${column}${row}`;
 };
 ```
@@ -384,13 +404,13 @@ Board Array Structure → Cell ID
 board[rowIndex][colIndex] → `${column}${row}`
 
 Where:
-  rowIndex (0-7) → column (a-h) via String.fromCharCode(97 + rowIndex)
-  colIndex (0-7) → row (1-8) via colIndex + 1
+  colIndex (0-7) → column (a-h) via String.fromCharCode(97 + colIndex)  // 横方向、左→右
+  rowIndex (0-7) → row (1-8) via rowIndex + 1  // 縦方向、上→下
 
 Example:
-  board[2][3] → row=2 → column='c', col=3 → row=4 → "c4"
-  board[0][0] → row=0 → column='a', col=0 → row=1 → "a1"
-  board[7][7] → row=7 → column='h', col=7 → row=8 → "h8"
+  board[0][0] → rowIndex=0 → row=1, colIndex=0 → column='a' → "a1" (左上隅)
+  board[0][2] → rowIndex=0 → row=1, colIndex=2 → column='c' → "c1" (最上行の3番目)
+  board[7][7] → rowIndex=7 → row=8, colIndex=7 → column='h' → "h8" (右下隅)
 ```
 
 **No Persistent Storage**: ID属性は静的HTML生成時に埋め込まれ、ランタイムで動的生成される。データベースやステート管理は不要。
