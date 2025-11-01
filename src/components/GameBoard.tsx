@@ -32,6 +32,7 @@ export default function GameBoard(): JSX.Element {
     whiteCount,
     isAIThinking,
     consecutivePassCount,
+    notationString,
     updateBoard,
     switchPlayer,
     updateGameStatus,
@@ -130,7 +131,7 @@ export default function GameBoard(): JSX.Element {
       const applyResult = applyMove(board, position, currentPlayer);
       if (!applyResult.success) return;
 
-      updateBoard(applyResult.value);
+      updateBoard(applyResult.value, position);
 
       // Reset pass count on valid move (Task 3.3)
       resetPassCount();
@@ -251,7 +252,7 @@ export default function GameBoard(): JSX.Element {
       .then((move) => {
         const applyResult = applyMove(board, move, currentPlayer);
         if (applyResult.success) {
-          updateBoard(applyResult.value);
+          updateBoard(applyResult.value, move);
 
           // Reset pass count on valid move (Task 3.3)
           resetPassCount();
@@ -472,6 +473,18 @@ export default function GameBoard(): JSX.Element {
         >
           パス
         </button>
+      )}
+
+      {/* Move History Display (Task 4) */}
+      {gameStatus.type === 'playing' && notationString && (
+        <div
+          data-testid="move-history"
+          className="mt-4 px-4 py-2 overflow-x-auto"
+        >
+          <div className="text-sm text-gray-600 whitespace-nowrap">
+            {notationString}
+          </div>
+        </div>
       )}
 
       {/* Game Over Screen */}
