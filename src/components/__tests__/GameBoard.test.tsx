@@ -148,6 +148,315 @@ describe('GameBoard Component', () => {
     });
   });
 
+  describe('Board Cell ID Attributes (Task 2.1)', () => {
+    it('盤面の各セルに一意のid属性が設定されること', () => {
+      const { container } = render(<GameBoard />);
+      // Get all board cells (64 cells total)
+      const cells = container.querySelectorAll('[data-row][data-col]');
+      expect(cells).toHaveLength(64);
+
+      // Verify each cell has an id attribute
+      cells.forEach((cell) => {
+        expect(cell).toHaveAttribute('id');
+      });
+    });
+
+    it('左上隅セル(row=0, col=0)のIDが"a1"であること', () => {
+      const { container } = render(<GameBoard />);
+      const cell = container.querySelector('[data-row="0"][data-col="0"]');
+      expect(cell).toHaveAttribute('id', 'a1');
+    });
+
+    it('右下隅セル(row=7, col=7)のIDが"h8"であること', () => {
+      const { container } = render(<GameBoard />);
+      const cell = container.querySelector('[data-row="7"][data-col="7"]');
+      expect(cell).toHaveAttribute('id', 'h8');
+    });
+
+    it('中央セル(row=2, col=3)のIDが"c4"であること', () => {
+      const { container } = render(<GameBoard />);
+      const cell = container.querySelector('[data-row="2"][data-col="3"]');
+      expect(cell).toHaveAttribute('id', 'c4');
+    });
+
+    it('全64個のセルIDが一意であること', () => {
+      const { container } = render(<GameBoard />);
+      const cells = container.querySelectorAll('[data-row][data-col]');
+      const ids = Array.from(cells).map((cell) => cell.getAttribute('id'));
+      const uniqueIds = new Set(ids);
+
+      // All IDs should be unique
+      expect(ids.length).toBe(64);
+      expect(uniqueIds.size).toBe(64);
+    });
+
+    it('セルIDが棋譜形式(正規表現/^[a-h][1-8]$/)に一致すること', () => {
+      const { container } = render(<GameBoard />);
+      const cells = container.querySelectorAll('[data-row][data-col]');
+
+      cells.forEach((cell) => {
+        const id = cell.getAttribute('id');
+        expect(id).toMatch(/^[a-h][1-8]$/);
+      });
+    });
+
+    it('セルID属性が既存のdata-*属性と共存すること', () => {
+      const { container } = render(<GameBoard />);
+      // Use a cell that has a stone (row=3, col=3 has a white stone in initial state)
+      const cell = container.querySelector('[data-row="3"][data-col="3"]');
+
+      // Verify all attributes coexist
+      expect(cell).toHaveAttribute('id', 'd4');
+      expect(cell).toHaveAttribute('data-row', '3');
+      expect(cell).toHaveAttribute('data-col', '3');
+      expect(cell).toHaveAttribute('data-stone', 'white');
+    });
+
+    it('セルクリックイベントがID属性追加後も正常動作すること', async () => {
+      const mockApplyMove = jest.spyOn(gameLogic, 'applyMove').mockReturnValue({
+        success: true,
+        value: [
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, 'black', null, null, null],
+          [null, null, null, 'black', 'black', null, null, null],
+          [null, null, null, 'white', 'black', null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+        ],
+      });
+
+      const mockValidateMove = jest
+        .spyOn(gameLogic, 'validateMove')
+        .mockReturnValue({ success: true, value: true });
+
+      const { container } = render(<GameBoard />);
+
+      // Click cell with id="c4" (row=2, col=3)
+      const cell = container.querySelector('#c4');
+      expect(cell).toBeInTheDocument();
+
+      await userEvent.click(cell!);
+
+      // Verify the move was processed (applyMove was called)
+      expect(mockApplyMove).toHaveBeenCalled();
+
+      mockApplyMove.mockRestore();
+      mockValidateMove.mockRestore();
+    });
+  });
+
+  describe('Move History ID Attribute (Task 2.2)', () => {
+    it('着手履歴コンポーネントにid="history"属性が設定されること', async () => {
+      const mockApplyMove = jest.spyOn(gameLogic, 'applyMove').mockReturnValue({
+        success: true,
+        value: [
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, 'black', null, null, null],
+          [null, null, null, 'black', 'black', null, null, null],
+          [null, null, null, 'white', 'black', null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+        ],
+      });
+
+      const mockValidateMove = jest
+        .spyOn(gameLogic, 'validateMove')
+        .mockReturnValue({ success: true, value: true });
+
+      const { container } = render(<GameBoard />);
+      const cell = screen.getAllByRole('button')[20];
+      await userEvent.click(cell);
+
+      await waitFor(() => {
+        const moveHistory = container.querySelector('#history');
+        expect(moveHistory).toBeInTheDocument();
+        expect(moveHistory).toHaveAttribute('id', 'history');
+      });
+
+      mockApplyMove.mockRestore();
+      mockValidateMove.mockRestore();
+    });
+
+    it('id="history"とdata-testid="move-history"が共存すること', async () => {
+      const mockApplyMove = jest.spyOn(gameLogic, 'applyMove').mockReturnValue({
+        success: true,
+        value: [
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, 'black', null, null, null],
+          [null, null, null, 'black', 'black', null, null, null],
+          [null, null, null, 'white', 'black', null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+        ],
+      });
+
+      const mockValidateMove = jest
+        .spyOn(gameLogic, 'validateMove')
+        .mockReturnValue({ success: true, value: true });
+
+      const { container } = render(<GameBoard />);
+      const cell = screen.getAllByRole('button')[20];
+      await userEvent.click(cell);
+
+      await waitFor(() => {
+        const historyById = container.querySelector('#history');
+        const historyByTestId = screen.getByTestId('move-history');
+
+        // Both selectors should find the same element
+        expect(historyById).toBe(historyByTestId);
+        expect(historyById).toHaveAttribute('id', 'history');
+        expect(historyById).toHaveAttribute('data-testid', 'move-history');
+      });
+
+      mockApplyMove.mockRestore();
+      mockValidateMove.mockRestore();
+    });
+
+    it('notationString不在時はid="history"要素が存在しないこと', () => {
+      const { container } = render(<GameBoard />);
+      const moveHistory = container.querySelector('#history');
+      expect(moveHistory).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Accessibility - Cell aria-label (Task 5.1)', () => {
+    it('各セルにaria-label属性が設定されること', () => {
+      const { container } = render(<GameBoard />);
+      const cells = container.querySelectorAll('[data-row][data-col]');
+
+      cells.forEach((cell) => {
+        expect(cell).toHaveAttribute('aria-label');
+      });
+    });
+
+    it('左上隅セル(a1)のaria-labelが"セル a1"であること', () => {
+      const { container } = render(<GameBoard />);
+      const cell = container.querySelector('[data-row="0"][data-col="0"]');
+      expect(cell).toHaveAttribute('aria-label', 'セル a1');
+    });
+
+    it('右下隅セル(h8)のaria-labelが"セル h8"であること', () => {
+      const { container } = render(<GameBoard />);
+      const cell = container.querySelector('[data-row="7"][data-col="7"]');
+      expect(cell).toHaveAttribute('aria-label', 'セル h8');
+    });
+
+    it('中央セル(c4)のaria-labelが"セル c4"であること', () => {
+      const { container } = render(<GameBoard />);
+      const cell = container.querySelector('[data-row="2"][data-col="3"]');
+      expect(cell).toHaveAttribute('aria-label', 'セル c4');
+    });
+
+    it('screen.getByRole("button", { name: /セル a1/i })でセルを選択できること', () => {
+      render(<GameBoard />);
+      const cellA1 = screen.getByRole('button', { name: /セル a1/i });
+      expect(cellA1).toBeInTheDocument();
+      expect(cellA1).toHaveAttribute('id', 'a1');
+    });
+
+    it('aria-label属性が既存のaria-*属性と共存すること', () => {
+      render(<GameBoard />);
+      // Pass button has aria-label and aria-disabled
+      const passButton = screen.getByRole('button', {
+        name: /ターンをパスする/i,
+      });
+      expect(passButton).toHaveAttribute('aria-label');
+      expect(passButton).toHaveAttribute('aria-disabled');
+
+      // Score displays have aria-label
+      const blackScore = screen.getByLabelText(/Black score:/i);
+      expect(blackScore).toBeInTheDocument();
+
+      // Board cells should also have aria-label
+      const cellA1 = screen.getByRole('button', { name: /セル a1/i });
+      expect(cellA1).toHaveAttribute('aria-label', 'セル a1');
+    });
+
+    it('全64個のセルにaria-labelが設定されていること', () => {
+      const { container } = render(<GameBoard />);
+      const cells = container.querySelectorAll('[data-row][data-col]');
+
+      expect(cells.length).toBe(64);
+      cells.forEach((cell) => {
+        const ariaLabel = cell.getAttribute('aria-label');
+        expect(ariaLabel).toMatch(/^セル [a-h][1-8]$/);
+      });
+    });
+  });
+
+  describe('Accessibility - History Component Semantics (Task 5.2)', () => {
+    it('履歴コンポーネントが適切なコンテナ要素(div)を使用していること', async () => {
+      const mockApplyMove = jest.spyOn(gameLogic, 'applyMove').mockReturnValue({
+        success: true,
+        value: [
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, 'black', null, null, null],
+          [null, null, null, 'black', 'black', null, null, null],
+          [null, null, null, 'white', 'black', null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+        ],
+      });
+
+      const mockValidateMove = jest
+        .spyOn(gameLogic, 'validateMove')
+        .mockReturnValue({ success: true, value: true });
+
+      const { container } = render(<GameBoard />);
+      const cell = screen.getAllByRole('button')[20];
+      await userEvent.click(cell);
+
+      await waitFor(() => {
+        const moveHistory = container.querySelector('#history');
+        expect(moveHistory).toBeInTheDocument();
+        expect(moveHistory?.tagName).toBe('DIV');
+      });
+
+      mockApplyMove.mockRestore();
+      mockValidateMove.mockRestore();
+    });
+
+    it('履歴コンポーネントにaria-label属性が設定されていること', async () => {
+      const mockApplyMove = jest.spyOn(gameLogic, 'applyMove').mockReturnValue({
+        success: true,
+        value: [
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, 'black', null, null, null],
+          [null, null, null, 'black', 'black', null, null, null],
+          [null, null, null, 'white', 'black', null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+        ],
+      });
+
+      const mockValidateMove = jest
+        .spyOn(gameLogic, 'validateMove')
+        .mockReturnValue({ success: true, value: true });
+
+      const { container } = render(<GameBoard />);
+      const cell = screen.getAllByRole('button')[20];
+      await userEvent.click(cell);
+
+      await waitFor(() => {
+        const moveHistory = container.querySelector('#history');
+        expect(moveHistory).toHaveAttribute('aria-label', '着手履歴');
+      });
+
+      mockApplyMove.mockRestore();
+      mockValidateMove.mockRestore();
+    });
+  });
+
   describe('Move History Display (Task 4)', () => {
     it('初期状態では棋譜表示領域が表示されないこと', () => {
       render(<GameBoard />);
