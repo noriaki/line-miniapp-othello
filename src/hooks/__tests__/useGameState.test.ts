@@ -184,13 +184,13 @@ describe('useGameState', () => {
       // Create a mock new board (exact content doesn't matter for this test)
       const newBoard = result.current.board;
 
-      // Update board with a move at position (4, 5) which should convert to "e6"
+      // Update board with a move at position (4, 5) which should convert to "f5"
       act(() => {
         result.current.updateBoard(newBoard, { row: 4, col: 5 });
       });
 
-      expect(result.current.moveHistory).toEqual(['e6']);
-      expect(result.current.notationString).toBe('e6');
+      expect(result.current.moveHistory).toEqual(['f5']);
+      expect(result.current.notationString).toBe('f5');
     });
 
     it('should record multiple consecutive moves in correct order', () => {
@@ -198,27 +198,27 @@ describe('useGameState', () => {
 
       const newBoard = result.current.board;
 
-      // First move: black at e6
+      // First move: black at f5
       act(() => {
         result.current.updateBoard(newBoard, { row: 4, col: 5 });
       });
 
-      expect(result.current.moveHistory).toEqual(['e6']);
+      expect(result.current.moveHistory).toEqual(['f5']);
 
       // Second move: white at f6
       act(() => {
         result.current.updateBoard(newBoard, { row: 5, col: 5 });
       });
 
-      expect(result.current.moveHistory).toEqual(['e6', 'f6']);
+      expect(result.current.moveHistory).toEqual(['f5', 'f6']);
 
-      // Third move: black at f5
+      // Third move: black at e6
       act(() => {
         result.current.updateBoard(newBoard, { row: 5, col: 4 });
       });
 
-      expect(result.current.moveHistory).toEqual(['e6', 'f6', 'f5']);
-      expect(result.current.notationString).toBe('e6f6f5');
+      expect(result.current.moveHistory).toEqual(['f5', 'f6', 'e6']);
+      expect(result.current.notationString).toBe('f5f6e6');
     });
 
     it('should not record move when updateBoard is called without lastMove (pass)', () => {
@@ -231,7 +231,7 @@ describe('useGameState', () => {
         result.current.updateBoard(newBoard, { row: 4, col: 5 });
       });
 
-      expect(result.current.moveHistory).toEqual(['e6']);
+      expect(result.current.moveHistory).toEqual(['f5']);
 
       // Pass (updateBoard without lastMove)
       act(() => {
@@ -239,8 +239,8 @@ describe('useGameState', () => {
       });
 
       // History should not change
-      expect(result.current.moveHistory).toEqual(['e6']);
-      expect(result.current.notationString).toBe('e6');
+      expect(result.current.moveHistory).toEqual(['f5']);
+      expect(result.current.notationString).toBe('f5');
     });
 
     it('should reset moveHistory and notationString when resetGame is called', () => {
@@ -255,8 +255,8 @@ describe('useGameState', () => {
         result.current.updateBoard(newBoard, { row: 5, col: 4 });
       });
 
-      expect(result.current.moveHistory).toEqual(['e6', 'f6', 'f5']);
-      expect(result.current.notationString).toBe('e6f6f5');
+      expect(result.current.moveHistory).toEqual(['f5', 'f6', 'e6']);
+      expect(result.current.notationString).toBe('f5f6e6');
 
       // Reset game
       act(() => {
@@ -280,14 +280,14 @@ describe('useGameState', () => {
         result.current.updateBoard(newBoard, { row: 4, col: 5 });
       });
 
-      expect(result.current.notationString).toBe('e6');
+      expect(result.current.notationString).toBe('f5');
 
       // Add second move
       act(() => {
         result.current.updateBoard(newBoard, { row: 5, col: 5 });
       });
 
-      expect(result.current.notationString).toBe('e6f6');
+      expect(result.current.notationString).toBe('f5f6');
 
       // Reset
       act(() => {

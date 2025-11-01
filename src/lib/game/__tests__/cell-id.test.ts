@@ -8,9 +8,9 @@
  * chess notation format IDs for HTML elements.
  *
  * Important: This codebase uses the following mapping:
- *   - rowIndex (0-7) → column letter (a-h)
- *   - colIndex (0-7) → row number (1-8)
- * This matches the existing positionToNotation function in move-history.ts
+ *   - colIndex (0-7) → column letter (a-h) (horizontal, left→right)
+ *   - rowIndex (0-7) → row number (1-8) (vertical, top→bottom)
+ * This follows standard chess notation where columns are horizontal (a-h) and rows are vertical (1-8)
  */
 
 import { generateCellId } from '../cell-id';
@@ -29,60 +29,60 @@ describe('generateCellId', () => {
       expect(cellId).toBe('h8');
     });
 
-    test('should generate "a8" for top-right corner (rowIndex=0, colIndex=7)', () => {
+    test('should generate "h1" for top-right corner (rowIndex=0, colIndex=7)', () => {
       const cellId = generateCellId(0, 7);
-      expect(cellId).toBe('a8');
+      expect(cellId).toBe('h1');
     });
 
-    test('should generate "h1" for bottom-left corner (rowIndex=7, colIndex=0)', () => {
+    test('should generate "a8" for bottom-left corner (rowIndex=7, colIndex=0)', () => {
       const cellId = generateCellId(7, 0);
-      expect(cellId).toBe('h1');
+      expect(cellId).toBe('a8');
     });
   });
 
   describe('中間値テスト - Middle value tests', () => {
-    test('should generate "c4" for middle cell (rowIndex=2, colIndex=3)', () => {
+    test('should generate "d3" for middle cell (rowIndex=2, colIndex=3)', () => {
       // Requirement 1.2: ID形式 `{列文字}{行数字}`
-      // This matches the existing e2e test comment:
-      // "row=2, col=3 converts to: c (column from row) + 4 (row from col+1) = c4"
+      // colIndex=3 → column 'd' (horizontal position)
+      // rowIndex=2 → row '3' (vertical position)
       const cellId = generateCellId(2, 3);
-      expect(cellId).toBe('c4');
+      expect(cellId).toBe('d3');
     });
 
-    test('should generate "e6" for middle cell (rowIndex=4, colIndex=5)', () => {
+    test('should generate "f5" for middle cell (rowIndex=4, colIndex=5)', () => {
       const cellId = generateCellId(4, 5);
-      expect(cellId).toBe('e6');
+      expect(cellId).toBe('f5');
     });
 
-    test('should generate "d5" for center cell (rowIndex=3, colIndex=4)', () => {
+    test('should generate "e4" for center cell (rowIndex=3, colIndex=4)', () => {
       const cellId = generateCellId(3, 4);
-      expect(cellId).toBe('d5');
+      expect(cellId).toBe('e4');
     });
   });
 
   describe('インデックス変換テスト - Index conversion tests', () => {
-    test('should convert rowIndex (0-7) to column letters (a-h)', () => {
+    test('should convert colIndex (0-7) to column letters (a-h)', () => {
       // Requirement 1.5: 列インデックス0-7をa-h変換
-      expect(generateCellId(0, 0)).toBe('a1'); // 0 → a
-      expect(generateCellId(1, 0)).toBe('b1'); // 1 → b
-      expect(generateCellId(2, 0)).toBe('c1'); // 2 → c
-      expect(generateCellId(3, 0)).toBe('d1'); // 3 → d
-      expect(generateCellId(4, 0)).toBe('e1'); // 4 → e
-      expect(generateCellId(5, 0)).toBe('f1'); // 5 → f
-      expect(generateCellId(6, 0)).toBe('g1'); // 6 → g
-      expect(generateCellId(7, 0)).toBe('h1'); // 7 → h
+      expect(generateCellId(0, 0)).toBe('a1'); // colIndex 0 → a
+      expect(generateCellId(0, 1)).toBe('b1'); // colIndex 1 → b
+      expect(generateCellId(0, 2)).toBe('c1'); // colIndex 2 → c
+      expect(generateCellId(0, 3)).toBe('d1'); // colIndex 3 → d
+      expect(generateCellId(0, 4)).toBe('e1'); // colIndex 4 → e
+      expect(generateCellId(0, 5)).toBe('f1'); // colIndex 5 → f
+      expect(generateCellId(0, 6)).toBe('g1'); // colIndex 6 → g
+      expect(generateCellId(0, 7)).toBe('h1'); // colIndex 7 → h
     });
 
-    test('should convert colIndex (0-7) to row numbers (1-8)', () => {
+    test('should convert rowIndex (0-7) to row numbers (1-8)', () => {
       // Requirement 1.6: 行インデックス0-7を1-8変換
-      expect(generateCellId(0, 0)).toBe('a1'); // 0 → 1
-      expect(generateCellId(0, 1)).toBe('a2'); // 1 → 2
-      expect(generateCellId(0, 2)).toBe('a3'); // 2 → 3
-      expect(generateCellId(0, 3)).toBe('a4'); // 3 → 4
-      expect(generateCellId(0, 4)).toBe('a5'); // 4 → 5
-      expect(generateCellId(0, 5)).toBe('a6'); // 5 → 6
-      expect(generateCellId(0, 6)).toBe('a7'); // 6 → 7
-      expect(generateCellId(0, 7)).toBe('a8'); // 7 → 8
+      expect(generateCellId(0, 0)).toBe('a1'); // rowIndex 0 → 1
+      expect(generateCellId(1, 0)).toBe('a2'); // rowIndex 1 → 2
+      expect(generateCellId(2, 0)).toBe('a3'); // rowIndex 2 → 3
+      expect(generateCellId(3, 0)).toBe('a4'); // rowIndex 3 → 4
+      expect(generateCellId(4, 0)).toBe('a5'); // rowIndex 4 → 5
+      expect(generateCellId(5, 0)).toBe('a6'); // rowIndex 5 → 6
+      expect(generateCellId(6, 0)).toBe('a7'); // rowIndex 6 → 7
+      expect(generateCellId(7, 0)).toBe('a8'); // rowIndex 7 → 8
     });
   });
 
@@ -110,8 +110,8 @@ describe('generateCellId', () => {
       for (let rowIndex = 0; rowIndex < 8; rowIndex++) {
         for (let colIndex = 0; colIndex < 8; colIndex++) {
           const cellId = generateCellId(rowIndex, colIndex);
-          const expectedColumn = expectedColumns[rowIndex];
-          const expectedRow = expectedRows[colIndex];
+          const expectedColumn = expectedColumns[colIndex]; // colIndex → column
+          const expectedRow = expectedRows[rowIndex]; // rowIndex → row
           const expectedId = expectedColumn + expectedRow;
 
           expect(cellId).toBe(expectedId);
@@ -145,18 +145,18 @@ describe('generateCellId', () => {
 
   describe('既存コードとの整合性テスト - Consistency with existing code', () => {
     test('should match positionToNotation mapping for sample positions', () => {
-      // Verify consistency with existing move-history.ts positionToNotation function
-      // positionToNotation({ row: 0, col: 0 }) returns "a1"
+      // Verify consistency with corrected move-history.ts positionToNotation function
+      // positionToNotation({ row: 0, col: 0 }) should return "a1"
       expect(generateCellId(0, 0)).toBe('a1');
 
-      // positionToNotation({ row: 7, col: 7 }) returns "h8"
+      // positionToNotation({ row: 7, col: 7 }) should return "h8"
       expect(generateCellId(7, 7)).toBe('h8');
 
-      // positionToNotation({ row: 2, col: 6 }) returns "c7"
-      expect(generateCellId(2, 6)).toBe('c7');
+      // positionToNotation({ row: 2, col: 6 }) should return "g3"
+      expect(generateCellId(2, 6)).toBe('g3');
 
-      // From e2e test comment: row=2, col=3 → "c4"
-      expect(generateCellId(2, 3)).toBe('c4');
+      // Corrected mapping: row=2, col=3 → "d3"
+      expect(generateCellId(2, 3)).toBe('d3');
     });
   });
 });

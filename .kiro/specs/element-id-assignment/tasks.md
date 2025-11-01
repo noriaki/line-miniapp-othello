@@ -28,7 +28,7 @@
 
 ## タスク一覧
 
-- [ ] 1. 座標マッピング修正: テスト更新と実装修正 (TDD)
+- [x] 1. 座標マッピング修正: テスト更新と実装修正 (TDD)
   - `/src/lib/game/__tests__/cell-id.test.ts`のテストコメントと期待値を正しいマッピングに更新する
   - `/src/lib/game/__tests__/move-history.test.ts`のテストコメントを正しいマッピングに更新する
   - `/src/lib/game/cell-id.ts`の実装を修正する(2行: `colIndex → 列文字(a-h)`, `rowIndex → 行数字(1-8)`)

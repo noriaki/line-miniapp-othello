@@ -173,10 +173,10 @@ describe('GameBoard Component', () => {
       expect(cell).toHaveAttribute('id', 'h8');
     });
 
-    it('中央セル(row=2, col=3)のIDが"c4"であること', () => {
+    it('中央セル(row=2, col=3)のIDが"d3"であること', () => {
       const { container } = render(<GameBoard />);
       const cell = container.querySelector('[data-row="2"][data-col="3"]');
-      expect(cell).toHaveAttribute('id', 'c4');
+      expect(cell).toHaveAttribute('id', 'd3');
     });
 
     it('全64個のセルIDが一意であること', () => {
@@ -347,10 +347,10 @@ describe('GameBoard Component', () => {
       expect(cell).toHaveAttribute('aria-label', 'セル h8');
     });
 
-    it('中央セル(c4)のaria-labelが"セル c4"であること', () => {
+    it('中央セル(d3)のaria-labelが"セル d3"であること', () => {
       const { container } = render(<GameBoard />);
       const cell = container.querySelector('[data-row="2"][data-col="3"]');
-      expect(cell).toHaveAttribute('aria-label', 'セル c4');
+      expect(cell).toHaveAttribute('aria-label', 'セル d3');
     });
 
     it('screen.getByRole("button", { name: /セル a1/i })でセルを選択できること', () => {
