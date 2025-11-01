@@ -437,15 +437,18 @@ export default function GameBoard(): JSX.Element {
             const position: Position = { row: rowIndex, col: colIndex };
             const isValid = isValidMove(position);
 
+            const cellId = generateCellId(rowIndex, colIndex);
+
             return (
               <button
                 key={`${rowIndex}-${colIndex}`}
-                id={generateCellId(rowIndex, colIndex)}
+                id={cellId}
                 className={`board-cell ${isValid ? 'valid-move' : ''}`}
                 onClick={() => handleCellClick(position)}
                 disabled={
                   gameStatus.type !== 'playing' || currentPlayer !== 'black'
                 }
+                aria-label={`セル ${cellId}`}
                 data-stone={cell || undefined}
                 data-row={rowIndex}
                 data-col={colIndex}
@@ -482,6 +485,7 @@ export default function GameBoard(): JSX.Element {
         <div
           id="history"
           data-testid="move-history"
+          aria-label="着手履歴"
           className="mt-4 px-4 py-2 overflow-x-auto"
         >
           <div className="text-sm text-gray-600 whitespace-nowrap">
