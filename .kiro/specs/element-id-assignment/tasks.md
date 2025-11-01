@@ -15,8 +15,8 @@
   - 既存のkey, className, onClick, data-\*属性と共存させる
   - _Requirements: 1.1, 4.1_
 
-- [ ] 2.2 着手履歴コンポーネントへのID属性設定
-  - GameBoard.tsxの履歴レンダリングロジック(L478-488)に固定ID "history"を追加する
+- [x] 2.2 着手履歴コンポーネントへのID属性設定
+  - GameBoard.tsxの履歴レンダリングロジック(L481-490)に固定ID "history"を追加する
   - `<div>`要素のid属性に"history"を設定する
   - 既存のdata-testid="move-history"属性と併用する
   - 条件付きレンダリング(notationString存在時のみ)を維持する

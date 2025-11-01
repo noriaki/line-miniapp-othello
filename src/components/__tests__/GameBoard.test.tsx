@@ -247,6 +247,84 @@ describe('GameBoard Component', () => {
     });
   });
 
+  describe('Move History ID Attribute (Task 2.2)', () => {
+    it('着手履歴コンポーネントにid="history"属性が設定されること', async () => {
+      const mockApplyMove = jest.spyOn(gameLogic, 'applyMove').mockReturnValue({
+        success: true,
+        value: [
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, 'black', null, null, null],
+          [null, null, null, 'black', 'black', null, null, null],
+          [null, null, null, 'white', 'black', null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+        ],
+      });
+
+      const mockValidateMove = jest
+        .spyOn(gameLogic, 'validateMove')
+        .mockReturnValue({ success: true, value: true });
+
+      const { container } = render(<GameBoard />);
+      const cell = screen.getAllByRole('button')[20];
+      await userEvent.click(cell);
+
+      await waitFor(() => {
+        const moveHistory = container.querySelector('#history');
+        expect(moveHistory).toBeInTheDocument();
+        expect(moveHistory).toHaveAttribute('id', 'history');
+      });
+
+      mockApplyMove.mockRestore();
+      mockValidateMove.mockRestore();
+    });
+
+    it('id="history"とdata-testid="move-history"が共存すること', async () => {
+      const mockApplyMove = jest.spyOn(gameLogic, 'applyMove').mockReturnValue({
+        success: true,
+        value: [
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, 'black', null, null, null],
+          [null, null, null, 'black', 'black', null, null, null],
+          [null, null, null, 'white', 'black', null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+        ],
+      });
+
+      const mockValidateMove = jest
+        .spyOn(gameLogic, 'validateMove')
+        .mockReturnValue({ success: true, value: true });
+
+      const { container } = render(<GameBoard />);
+      const cell = screen.getAllByRole('button')[20];
+      await userEvent.click(cell);
+
+      await waitFor(() => {
+        const historyById = container.querySelector('#history');
+        const historyByTestId = screen.getByTestId('move-history');
+
+        // Both selectors should find the same element
+        expect(historyById).toBe(historyByTestId);
+        expect(historyById).toHaveAttribute('id', 'history');
+        expect(historyById).toHaveAttribute('data-testid', 'move-history');
+      });
+
+      mockApplyMove.mockRestore();
+      mockValidateMove.mockRestore();
+    });
+
+    it('notationString不在時はid="history"要素が存在しないこと', () => {
+      const { container } = render(<GameBoard />);
+      const moveHistory = container.querySelector('#history');
+      expect(moveHistory).not.toBeInTheDocument();
+    });
+  });
+
   describe('Move History Display (Task 4)', () => {
     it('初期状態では棋譜表示領域が表示されないこと', () => {
       render(<GameBoard />);

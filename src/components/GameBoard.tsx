@@ -480,6 +480,7 @@ export default function GameBoard(): JSX.Element {
       {/* Move History Display (Task 4) */}
       {gameStatus.type === 'playing' && notationString && (
         <div
+          id="history"
           data-testid="move-history"
           className="mt-4 px-4 py-2 overflow-x-auto"
         >
