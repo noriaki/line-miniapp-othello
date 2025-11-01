@@ -31,10 +31,13 @@ test.describe('Move History Display E2E Tests', () => {
       await page.goto('/');
 
       // Make user's first move (black player)
-      // Important: In this codebase:
-      //   - row (0-7) → column letter (a-h)
-      //   - col (0-7) → row number (1-8)
-      // So row=2, col=3 converts to: c (column from row) + 4 (row from col+1) = "c4"
+      // Coordinate mapping (correct implementation):
+      //   - data-row (0-7) represents rowIndex → row number (1-8)
+      //   - data-col (0-7) represents colIndex → column letter (a-h)
+      // So data-row="2", data-col="3" converts to:
+      //   - colIndex=3 → column 'd' (0→a, 1→b, 2→c, 3→d)
+      //   - rowIndex=2 → row '3' (0→1, 1→2, 2→3)
+      //   - Result: "d3"
       const validMoveCell = page.locator('[data-row="2"][data-col="3"]');
       await validMoveCell.click();
 
@@ -45,9 +48,9 @@ test.describe('Move History Display E2E Tests', () => {
       const moveHistory = page.locator('[data-testid="move-history"]');
       await expect(moveHistory).toBeVisible();
 
-      // Should contain the notation for the move (c4 = row 2, col 3)
+      // Should contain the notation for the move (d3 = row 2, col 3)
       const notationText = moveHistory.locator('div').first();
-      await expect(notationText).toContainText('c4');
+      await expect(notationText).toContainText('d3');
     });
 
     test('should update move history after AI makes a move', async ({
@@ -82,7 +85,7 @@ test.describe('Move History Display E2E Tests', () => {
     }) => {
       await page.goto('/');
 
-      // Move 1: User (black) plays c4 (row 2, col 3)
+      // Move 1: User (black) plays d3 (data-row=2, data-col=3)
       await page.locator('[data-row="2"][data-col="3"]').click();
       await page.waitForTimeout(500);
 
