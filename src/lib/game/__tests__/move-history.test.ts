@@ -14,14 +14,14 @@ describe('Move History', () => {
         expect(positionToNotation(position)).toBe('h8');
       });
 
-      it('should convert (2,6) to "c7"', () => {
+      it('should convert (2,6) to "g3"', () => {
         const position: Position = { row: 2, col: 6 };
-        expect(positionToNotation(position)).toBe('c7');
+        expect(positionToNotation(position)).toBe('g3');
       });
 
-      it('should convert (3,4) to "d5"', () => {
+      it('should convert (3,4) to "e4"', () => {
         const position: Position = { row: 3, col: 4 };
-        expect(positionToNotation(position)).toBe('d5');
+        expect(positionToNotation(position)).toBe('e4');
       });
     });
 
@@ -33,8 +33,8 @@ describe('Move History', () => {
         for (let row = 0; row < 8; row++) {
           for (let col = 0; col < 8; col++) {
             const position: Position = { row, col };
-            // In this codebase: row -> column letter, col -> row number
-            const expected = columns[row] + rows[col];
+            // Corrected mapping: col -> column letter, row -> row number
+            const expected = columns[col] + rows[row];
             expect(positionToNotation(position)).toBe(expected);
           }
         }
@@ -42,10 +42,10 @@ describe('Move History', () => {
 
       it('should cover all columns a-h', () => {
         const columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-        const col = 0;
+        const row = 0;
 
-        columns.forEach((expectedCol, rowIndex) => {
-          const position: Position = { row: rowIndex, col };
+        columns.forEach((expectedCol, colIndex) => {
+          const position: Position = { row, col: colIndex };
           const notation = positionToNotation(position);
           expect(notation[0]).toBe(expectedCol);
         });
@@ -53,10 +53,10 @@ describe('Move History', () => {
 
       it('should cover all rows 1-8', () => {
         const rows = ['1', '2', '3', '4', '5', '6', '7', '8'];
-        const row = 0;
+        const col = 0;
 
-        rows.forEach((expectedRow, colIndex) => {
-          const position: Position = { row, col: colIndex };
+        rows.forEach((expectedRow, rowIndex) => {
+          const position: Position = { row: rowIndex, col };
           const notation = positionToNotation(position);
           expect(notation[1]).toBe(expectedRow);
         });
