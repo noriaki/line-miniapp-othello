@@ -269,14 +269,31 @@ describe('decodeResponse', () => {
     }
   });
 
-  it('should return error for invalid response', () => {
-    // Minimum valid is 100 (policy=63, value=0)
-    const result = decodeResponse(50);
+  it('should return error for invalid policy range', () => {
+    // Invalid: policy = 63 - floor(64100/1000) = 63 - 64 = -1 (< 0)
+    const result = decodeResponse(64100);
 
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.type).toBe('decode_error');
       expect(result.error.reason).toBe('invalid_response');
+      expect(result.error.message).toContain('Invalid policy');
+    }
+  });
+
+  it('should accept negative values (value < 0)', () => {
+    // Valid: policy=63, value=-2 → res=1000*0+100-2=98
+    const result1 = decodeResponse(98);
+    expect(result1.success).toBe(true);
+    if (result1.success) {
+      expect(result1.value).toEqual({ row: 0, col: 0 }); // a1
+    }
+
+    // Valid: policy=63, value=-50 → res=1000*0+100-50=50
+    const result2 = decodeResponse(50);
+    expect(result2.success).toBe(true);
+    if (result2.success) {
+      expect(result2.value).toEqual({ row: 0, col: 0 }); // a1
     }
   });
 });
