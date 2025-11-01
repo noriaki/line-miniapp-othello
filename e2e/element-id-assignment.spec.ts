@@ -24,10 +24,12 @@ test.describe('Element ID Assignment E2E Tests', () => {
       await expect(cellA1).toBeVisible();
 
       // Verify data attributes consistency
-      // Important: In this codebase:
-      //   - row (0-7) → column letter (a-h)
-      //   - col (0-7) → row number (1-8)
-      // So cell "a1" should have: row=0 (a), col=0 (1)
+      // Correct coordinate mapping:
+      //   - data-row (0-7) represents vertical position (rowIndex) → row number (1-8)
+      //   - data-col (0-7) represents horizontal position (colIndex) → column letter (a-h)
+      // So cell "a1" (top-left corner) should have: data-row="0", data-col="0"
+      //   - rowIndex=0 → row 1
+      //   - colIndex=0 → column 'a'
       await expect(cellA1).toHaveAttribute('data-row', '0');
       await expect(cellA1).toHaveAttribute('data-col', '0');
     });
@@ -44,7 +46,9 @@ test.describe('Element ID Assignment E2E Tests', () => {
       await expect(cellH8).toBeVisible();
 
       // Verify data attributes consistency
-      // Cell "h8" should have: row=7 (h), col=7 (8)
+      // Cell "h8" (bottom-right corner) should have: data-row="7", data-col="7"
+      //   - rowIndex=7 → row 8
+      //   - colIndex=7 → column 'h'
       await expect(cellH8).toHaveAttribute('data-row', '7');
       await expect(cellH8).toHaveAttribute('data-col', '7');
     });
@@ -54,7 +58,8 @@ test.describe('Element ID Assignment E2E Tests', () => {
     }) => {
       await page.goto('/');
 
-      // Cell c4 (row=2, col=3) is a valid opening move
+      // Cell c4 (rowIndex=3, colIndex=2) is a valid opening move
+      // ID "c4" corresponds to: column 'c' (colIndex=2), row '4' (rowIndex=3)
       const cellC4 = page.locator('#c4');
 
       // Verify it's a valid move (should have data-valid attribute)
@@ -85,14 +90,16 @@ test.describe('Element ID Assignment E2E Tests', () => {
       await page.goto('/');
 
       // Test multiple cells to ensure consistent ID-to-data mapping
+      // ID format: {column}{row} where column=a-h, row=1-8
+      // data-row = rowIndex (0-7), data-col = colIndex (0-7)
       const testCases = [
-        { id: 'a1', row: '0', col: '0' }, // Top-left
-        { id: 'a8', row: '0', col: '7' }, // Bottom-left
-        { id: 'h1', row: '7', col: '0' }, // Top-right
-        { id: 'h8', row: '7', col: '7' }, // Bottom-right
-        { id: 'c4', row: '2', col: '3' }, // Center
-        { id: 'd5', row: '3', col: '4' }, // Center
-        { id: 'e6', row: '4', col: '5' }, // Center
+        { id: 'a1', row: '0', col: '0' }, // Top-left: rowIndex=0, colIndex=0
+        { id: 'a8', row: '7', col: '0' }, // Bottom-left: rowIndex=7, colIndex=0
+        { id: 'h1', row: '0', col: '7' }, // Top-right: rowIndex=0, colIndex=7
+        { id: 'h8', row: '7', col: '7' }, // Bottom-right: rowIndex=7, colIndex=7
+        { id: 'c4', row: '3', col: '2' }, // Center: rowIndex=3, colIndex=2
+        { id: 'd5', row: '4', col: '3' }, // Center: rowIndex=4, colIndex=3
+        { id: 'e6', row: '5', col: '4' }, // Center: rowIndex=5, colIndex=4
       ];
 
       for (const testCase of testCases) {
