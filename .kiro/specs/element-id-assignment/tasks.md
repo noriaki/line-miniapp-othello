@@ -9,7 +9,7 @@
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.6_
 
 - [ ] 2. GameBoardコンポーネントへのID属性追加
-- [ ] 2.1 盤面セルへのID属性設定
+- [x] 2.1 盤面セルへのID属性設定
   - GameBoard.tsxのセルレンダリングロジック(L434-459)にID生成関数を統合する
   - 各`<button>`要素のid属性にセルIDを設定する
   - 既存のkey, className, onClick, data-\*属性と共存させる

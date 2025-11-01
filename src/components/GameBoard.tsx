@@ -11,6 +11,7 @@ import {
   calculateValidMoves,
 } from '@/lib/game/game-logic';
 import { checkGameEnd } from '@/lib/game/game-end';
+import { generateCellId } from '@/lib/game/cell-id';
 import type { Position } from '@/lib/game/types';
 import './GameBoard.css';
 
@@ -439,6 +440,7 @@ export default function GameBoard(): JSX.Element {
             return (
               <button
                 key={`${rowIndex}-${colIndex}`}
+                id={generateCellId(rowIndex, colIndex)}
                 className={`board-cell ${isValid ? 'valid-move' : ''}`}
                 onClick={() => handleCellClick(position)}
                 disabled={

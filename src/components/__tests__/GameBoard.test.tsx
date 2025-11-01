@@ -148,6 +148,105 @@ describe('GameBoard Component', () => {
     });
   });
 
+  describe('Board Cell ID Attributes (Task 2.1)', () => {
+    it('盤面の各セルに一意のid属性が設定されること', () => {
+      const { container } = render(<GameBoard />);
+      // Get all board cells (64 cells total)
+      const cells = container.querySelectorAll('[data-row][data-col]');
+      expect(cells).toHaveLength(64);
+
+      // Verify each cell has an id attribute
+      cells.forEach((cell) => {
+        expect(cell).toHaveAttribute('id');
+      });
+    });
+
+    it('左上隅セル(row=0, col=0)のIDが"a1"であること', () => {
+      const { container } = render(<GameBoard />);
+      const cell = container.querySelector('[data-row="0"][data-col="0"]');
+      expect(cell).toHaveAttribute('id', 'a1');
+    });
+
+    it('右下隅セル(row=7, col=7)のIDが"h8"であること', () => {
+      const { container } = render(<GameBoard />);
+      const cell = container.querySelector('[data-row="7"][data-col="7"]');
+      expect(cell).toHaveAttribute('id', 'h8');
+    });
+
+    it('中央セル(row=2, col=3)のIDが"c4"であること', () => {
+      const { container } = render(<GameBoard />);
+      const cell = container.querySelector('[data-row="2"][data-col="3"]');
+      expect(cell).toHaveAttribute('id', 'c4');
+    });
+
+    it('全64個のセルIDが一意であること', () => {
+      const { container } = render(<GameBoard />);
+      const cells = container.querySelectorAll('[data-row][data-col]');
+      const ids = Array.from(cells).map((cell) => cell.getAttribute('id'));
+      const uniqueIds = new Set(ids);
+
+      // All IDs should be unique
+      expect(ids.length).toBe(64);
+      expect(uniqueIds.size).toBe(64);
+    });
+
+    it('セルIDが棋譜形式(正規表現/^[a-h][1-8]$/)に一致すること', () => {
+      const { container } = render(<GameBoard />);
+      const cells = container.querySelectorAll('[data-row][data-col]');
+
+      cells.forEach((cell) => {
+        const id = cell.getAttribute('id');
+        expect(id).toMatch(/^[a-h][1-8]$/);
+      });
+    });
+
+    it('セルID属性が既存のdata-*属性と共存すること', () => {
+      const { container } = render(<GameBoard />);
+      // Use a cell that has a stone (row=3, col=3 has a white stone in initial state)
+      const cell = container.querySelector('[data-row="3"][data-col="3"]');
+
+      // Verify all attributes coexist
+      expect(cell).toHaveAttribute('id', 'd4');
+      expect(cell).toHaveAttribute('data-row', '3');
+      expect(cell).toHaveAttribute('data-col', '3');
+      expect(cell).toHaveAttribute('data-stone', 'white');
+    });
+
+    it('セルクリックイベントがID属性追加後も正常動作すること', async () => {
+      const mockApplyMove = jest.spyOn(gameLogic, 'applyMove').mockReturnValue({
+        success: true,
+        value: [
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, 'black', null, null, null],
+          [null, null, null, 'black', 'black', null, null, null],
+          [null, null, null, 'white', 'black', null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+          [null, null, null, null, null, null, null, null],
+        ],
+      });
+
+      const mockValidateMove = jest
+        .spyOn(gameLogic, 'validateMove')
+        .mockReturnValue({ success: true, value: true });
+
+      const { container } = render(<GameBoard />);
+
+      // Click cell with id="c4" (row=2, col=3)
+      const cell = container.querySelector('#c4');
+      expect(cell).toBeInTheDocument();
+
+      await userEvent.click(cell!);
+
+      // Verify the move was processed (applyMove was called)
+      expect(mockApplyMove).toHaveBeenCalled();
+
+      mockApplyMove.mockRestore();
+      mockValidateMove.mockRestore();
+    });
+  });
+
   describe('Move History Display (Task 4)', () => {
     it('初期状態では棋譜表示領域が表示されないこと', () => {
       render(<GameBoard />);
