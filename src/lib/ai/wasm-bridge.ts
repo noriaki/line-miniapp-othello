@@ -141,20 +141,11 @@ export function encodeBoard(
 export function decodeResponse(
   encodedResult: number
 ): Result<Position, DecodeError> {
-  // Minimum valid response is 100 (policy=63, value=0)
-  if (encodedResult < 100) {
-    return {
-      success: false,
-      error: {
-        type: 'decode_error',
-        reason: 'invalid_response',
-        message: `Invalid response: ${encodedResult} (minimum is 100)`,
-      },
-    };
-  }
-
   // Decode: policy = 63 - Math.floor(result / 1000)
   // IMPORTANT: Do NOT subtract 100 before dividing! The value is encoded in the last 3 digits.
+  // Note: encodedResult can be < 100 when AI evaluation value is negative (unfavorable position)
+  // Format: 1000*(63-policy)+100+value
+  // Example: policy=63, value=-2 → 1000*0+100-2 = 98 (valid)
   const policy = 63 - Math.floor(encodedResult / 1000);
 
   // Validate policy range
